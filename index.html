@@ -1,87 +1,133 @@
 <!-- index.html -->
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" x-data="{ menuOpen: false }">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Jossua Chartier – Data Science Portfolio</title>
+  <title>Your Name – Data Science Portfolio</title>
 
-  <!-- Tailwind CSS for easy styling -->
+  <!-- Google Font: Poppins -->
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;800&display=swap" rel="stylesheet">
+  <!-- Tailwind CSS Config -->
+  <script>
+    tailwind.config = { theme: { extend: { fontFamily: { sans: ['Poppins', 'sans-serif'] } } } }
+  </script>
   <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Alpine.js for mobile menu and interactivity -->
+  <script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
+  <!-- AOS for scroll animations -->
+  <link href="https://unpkg.com/aos@2.3.1/dist/aos.css" rel="stylesheet" />
+  <script defer src="https://unpkg.com/aos@2.3.1/dist/aos.js"></script>
 </head>
-<body class="bg-gray-50 text-gray-800">
+<body class="bg-gray-50 font-sans leading-relaxed text-gray-800" x-init="AOS.init({ once: true, duration: 800 })">
 
   <!-- NAVIGATION -->
-  <nav class="bg-white shadow-md fixed w-full z-10">
-    <div class="max-w-5xl mx-auto px-6 py-4 flex items-center justify-between">
-      <!-- Logo / Name -->
-      <a href="#" class="text-2xl font-bold">Jossua Chartier</a>
-
-      <!-- Desktop Links -->
+  <nav class="fixed w-full bg-white/80 backdrop-blur shadow-md z-50">
+    <div class="max-w-6xl mx-auto px-6 py-4 flex justify-between items-center">
+      <a href="#" class="text-2xl font-extrabold hover:text-indigo-600">YourName</a>
       <div class="hidden md:flex space-x-8 text-lg">
-        <a href="#about" class="hover:text-indigo-600">About</a>
-        <a href="#projects" class="hover:text-indigo-600">Projects</a>
-        <a href="#contact" class="hover:text-indigo-600">Contact</a>
-        <a href="resume.html" class="hover:text-indigo-600">Résumé</a>
-
+        <a href="#about" class="hover:text-indigo-600" data-aos="fade-down">About</a>
+        <a href="#projects" class="hover:text-indigo-600" data-aos="fade-down" data-aos-delay="100">Projects</a>
+        <a href="#contact" class="hover:text-indigo-600" data-aos="fade-down" data-aos-delay="200">Contact</a>
+        <a href="resume.html" class="hover:text-indigo-600" data-aos="fade-down" data-aos-delay="300">Resume</a>
       </div>
-
-      <!-- Mobile menu button (optional) -->
+      <!-- Mobile menu button -->
+      <button @click="menuOpen = !menuOpen" class="md:hidden p-2 focus:outline-none">
+        <svg x-show="!menuOpen" xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
+        </svg>
+        <svg x-show="menuOpen" xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+        </svg>
+      </button>
+    </div>
+    <!-- Mobile Links -->
+    <div x-show="menuOpen" class="md:hidden bg-white/90 backdrop-blur shadow-md">
+      <a href="#about" class="block px-6 py-3 hover:bg-gray-100">About</a>
+      <a href="#projects" class="block px-6 py-3 hover:bg-gray-100">Projects</a>
+      <a href="#contact" class="block px-6 py-3 hover:bg-gray-100">Contact</a>
+      <a href="resume.html" class="block px-6 py-3 hover:bg-gray-100">Resume</a>
     </div>
   </nav>
 
-  <main class="pt-20">
-    <!-- HERO -->
-    <section class="text-center py-20 bg-gradient-to-r from-blue-300 to-indigo-400 text-white">
-      <h1 class="text-5xl font-extrabold mb-4">Hello, I’m Jossua Chartier</h1>
-      <p class="text-xl mb-6">I’m a student in Data Science specializing in turning data into actionable insights.</p>
-      <a href="#projects" class="inline-block bg-white text-indigo-600 px-6 py-3 rounded-full font-semibold hover:bg-gray-100 transition">View My Projects</a>
-    </section>
+  <!-- HERO -->
+  <header class="h-screen flex items-center justify-center bg-gradient-to-br from-indigo-600 to-purple-600 relative text-center px-6">
+    <div class="max-w-3xl mx-auto relative z-10" data-aos="fade-up">
+      <h1 class="text-6xl md:text-7xl font-extrabold text-white mb-4">Hi, I’m <span class="text-yellow-300">Your Name</span></h1>
+      <p class="text-xl md:text-2xl text-white/90 mb-8">Data Scientist specializing in turning complex data into actionable insights.</p>
+      <a href="#projects" class="inline-block bg-yellow-300 text-indigo-900 px-8 py-4 rounded-full font-semibold shadow-lg hover:shadow-xl transition">View Projects</a>
+    </div>
+    <!-- Animated down arrow -->
+    <div class="absolute bottom-10 animate-bounce">
+      <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-white/80" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+      </svg>
+    </div>
+  </header>
 
-    <!-- ABOUT -->
-    <section id="about" class="py-20 max-w-4xl mx-auto px-6">
-      <h2 class="text-4xl font-bold text-center mb-12">About Me</h2>
-      <!-- Profile image (unavailable) -->
-      <!-- <img src="assets/profile.jpg" alt="Your Photo" class="w-48 h-48 rounded-full mx-auto mb-6"> -->
-      <p class="text-gray-700 mb-6">
-        I’m a student in Data Science with a passion for exploratory data analysis, machine learning, and data visualization.
-      </p>
-      <div class="grid grid-cols-2 gap-4 text-gray-800">
+  <!-- STATS -->
+  <section class="py-16 bg-white">
+    <div class="max-w-6xl mx-auto px-6 grid grid-cols-1 md:grid-cols-3 gap-8 text-center">
+      <div data-aos="fade-up">
+        <h3 class="text-4xl font-bold text-indigo-600">12+</h3>
+        <p class="mt-2 text-gray-600">Projects Completed</p>
+      </div>
+      <div data-aos="fade-up" data-aos-delay="100">
+        <h3 class="text-4xl font-bold text-indigo-600">4</h3>
+        <p class="mt-2 text-gray-600">Years Experience</p>
+      </div>
+      <div data-aos="fade-up" data-aos-delay="200">
+        <h3 class="text-4xl font-bold text-indigo-600">6</h3>
+        <p class="mt-2 text-gray-600">Certifications</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ABOUT -->
+  <section id="about" class="py-20 bg-gray-50" data-aos="fade-right">
+    <div class="max-w-4xl mx-auto px-6">
+      <h2 class="text-4xl font-bold mb-6 text-indigo-600">About Me</h2>
+      <p class="text-gray-700 mb-4">I’m a Data Scientist passionate about exploratory data analysis, machine learning, and data visualization. I use Python, pandas, scikit-learn, and TensorFlow to deliver impactful solutions.</p>
+      <div class="grid grid-cols-2 gap-4 mt-6 text-gray-800">
         <div><strong>Languages:</strong> Python, R, SQL</div>
         <div><strong>Libraries:</strong> pandas, NumPy, scikit-learn</div>
         <div><strong>Visualization:</strong> Matplotlib, Seaborn, Plotly</div>
         <div><strong>Tools:</strong> Jupyter, Git, Docker</div>
       </div>
-    </section>
+    </div>
+  </section>
 
-    <!-- PROJECTS -->
-    <section id="projects" class="py-20 bg-gray-100">
-      <div class="max-w-6xl mx-auto px-6">
-        <h2 class="text-4xl font-bold text-center mb-12">Projects</h2>
-        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
-          <!-- Example Project Card -->
-          <a href="project1.html" class="block bg-white rounded-lg shadow-md overflow-hidden hover:shadow-xl transition">
-            <!-- <img src="assets/project1-thumb.jpg" alt="Project 1" class="w-full h-48 object-cover"> -->
-            <div class="p-4">
-              <h3 class="text-2xl font-semibold mb-2">Project nº1</h3>
-              <p class="text-gray-600">Customer Churn Prediction using machine learning models.</p>
-            </div>
-          </a>
-        </div>
+  <!-- PROJECTS -->
+  <section id="projects" class="py-20 bg-white" data-aos="fade-up">
+    <div class="max-w-6xl mx-auto px-6">
+      <h2 class="text-4xl font-bold text-center mb-12 text-gray-800">Projects</h2>
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
+        <!-- Example Project Card -->
+        <a href="project1.html" class="group block bg-gray-50 rounded-2xl overflow-hidden transform hover:scale-105 transition-shadow shadow-md hover:shadow-xl" data-aos="fade-up" data-aos-delay="100">
+          <!-- Placeholder image: replace with project thumbnail -->
+          <!-- <img src="assets/project1-thumb.jpg" alt="Project 1" class="w-full h-48 object-cover"> -->
+          <div class="p-6">
+            <h3 class="text-2xl font-semibold mb-2 text-gray-800">Project One</h3>
+            <p class="text-gray-600">Customer Churn Prediction using Random Forest and XGBoost models.</p>
+          </div>
+        </a>
+        <!-- Duplicate for other projects -->
       </div>
-    </section>
+    </div>
+  </section>
 
-    <!-- CONTACT -->
-    <section id="contact" class="py-20 max-w-4xl mx-auto px-6 text-center">
-      <h2 class="text-4xl font-bold mb-4">Contact</h2>
-      <p class="text-gray-700 mb-6">Feel free to reach out if you’d like to collaborate or learn more about my work.</p>
-      <a href="mailto:chartier.jossua@gmail.com" class="inline-block bg-indigo-600 text-white px-6 py-3 rounded-full font-semibold hover:bg-indigo-700 transition">Email Me</a>
-    </section>
-  </main>
+  <!-- CONTACT -->
+  <section id="contact" class="py-20 bg-gray-50" data-aos="fade-up">
+    <div class="max-w-4xl mx-auto px-6 text-center">
+      <h2 class="text-4xl font-bold mb-6 text-indigo-600">Let’s Connect</h2>
+      <p class="text-gray-700 mb-6">I’m always excited to discuss new projects or share insights.</p>
+      <a href="mailto:chartier.jossua@gmail.com" class="inline-block px-8 py-4 bg-indigo-600 text-white rounded-full font-semibold hover:bg-indigo-700 transition">Email Me</a>
+    </div>
+  </section>
 
   <!-- FOOTER -->
-  <footer class="py-6 bg-white text-center text-gray-600">
-    &copy; 2025 Jossua Chartier. All rights reserved.
+  <footer class="py-6 bg-gray-100 text-center text-gray-600">
+    <div class="max-w-6xl mx-auto px-6">&copy; 2025 Your Name. All rights reserved.</div>
   </footer>
 
 </body>
