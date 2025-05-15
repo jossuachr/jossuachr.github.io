@@ -5,12 +5,11 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Jossua Chartier – Résumé</title>
-  <!-- Tailwind for basic styling -->
   <script src="https://cdn.tailwindcss.com"></script>
 </head>
-<body class="bg-gray-50 text-gray-800 flex flex-col min-h-screen">
+<body class="bg-gray-50 text-gray-800 flex flex-col h-screen">
 
-  <!-- Simple nav (copy from index.html as needed) -->
+  <!-- NAVIGATION -->
   <nav class="bg-white shadow-md">
     <div class="max-w-5xl mx-auto px-6 py-4 flex justify-between items-center">
       <a href="index.html" class="font-bold text-xl">Jossua Chartier</a>
@@ -18,26 +17,25 @@
     </div>
   </nav>
 
-  <!-- Embed the PDF full-screen -->
-  <main class="flex-1 overflow-hidden">
+  <!-- EMBEDDED PDF -->
+  <main class="flex-1 relative">
     <iframe
       src="assets/resume.pdf"
-      class="w-full h-full"
+      class="absolute inset-0 w-full h-full"
       style="border: none;"
     >
-      <!-- Fallback for browsers without inline-PDF support -->
-      <p>Your browser doesn’t support embedded PDFs.  
-         <a href="assets/resume.pdf" class="text-indigo-600 underline">
-           Download the PDF instead.
-         </a>
+      <p class="p-6">
+        Your browser doesn’t support embedded PDFs.  
+        <a href="assets/resume.pdf" class="text-indigo-600 underline">
+          Download the PDF instead.
+        </a>
       </p>
     </iframe>
   </main>
 
-  <!-- Footer -->
+  <!-- FOOTER -->
   <footer class="bg-white text-center py-4 text-gray-600">
     &copy; 2025 Jossua Chartier. All rights reserved.
   </footer>
-
 </body>
 </html>
