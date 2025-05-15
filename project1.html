@@ -1,1 +1,110 @@
+<!-- project-template.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Project Title – Your Name</title>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Google Font -->
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;800&display=swap" rel="stylesheet">
+  <style>body { font-family: 'Poppins', sans-serif; }</n></style>
+</head>
+<body class="bg-gray-50 text-gray-800 leading-relaxed">
+
+  <!-- NAVIGATION -->
+  <nav class="bg-white shadow-md">
+    <div class="max-w-6xl mx-auto px-6 py-4 flex justify-between items-center">
+      <a href="index.html" class="text-xl font-bold hover:text-indigo-600">&larr; Home</a>
+      <a href="resume.html" class="text-indigo-600 hover:underline">Resume</a>
+    </div>
+  </nav>
+
+  <main class="max-w-4xl mx-auto px-6 py-12 space-y-12">
+    <!-- Project Header -->
+    <header>
+      <h1 class="text-4xl font-extrabold mb-2">Project Title</h1>
+      <p class="text-gray-600">*Brief tagline or one-liner about the project.*</p>
+    </header>
+
+    <!-- Business Problem -->
+    <section id="problem">
+      <h2 class="text-2xl font-semibold mb-2">Business Problem</h2>
+      <p>Describe the real-world business need or question this project addresses.</p>
+    </section>
+
+    <!-- Data Description -->
+    <section id="data">
+      <h2 class="text-2xl font-semibold mb-2">Data Description</h2>
+      <p>Explain data source, structure, and key variables.</p>
+      <ul class="list-disc list-inside">
+        <li><code>date</code>: date of transaction</li>
+        <li><code>category</code>: product category name</li>
+        <li><code>revenue</code>: sales revenue (numeric)</li>
+      </ul>
+    </section>
+
+    <!-- R Code & Output Templates -->
+    <section id="analysis">
+      <h2 class="text-2xl font-semibold mb-4">Analysis & Visualization</h2>
+
+      <!-- Code Chunk -->
+      <div class="mb-6">
+        <h3 class="text-xl font-semibold mb-2">R Code</h3>
+        <pre class="bg-gray-800 text-white p-4 rounded-lg overflow-x-auto"><code class="language-r"># Load libraries
+library(tidyverse)
+
+# Read data
+data <- read_csv("assets/sales_data.csv")
+
+# Summarize monthly revenue by category
+monthly <- data %>%
+  mutate(month = lubridate::floor_date(date, "month")) %>%
+  group_by(month, category) %>%
+  summarise(revenue = sum(revenue))
+
+# Plot bar chart
+ggplot(monthly, aes(x = month, y = revenue, fill = category)) +
+  geom_col(position = "dodge") +
+  labs(title = "Monthly Revenue by Category", x = NULL, y = "Revenue")
+</code></pre>
+      </div>
+
+      <!-- Rendered Output -->
+      <div>
+        <h3 class="text-xl font-semibold mb-2">Rendered Chart</h3>
+        <!-- Replace with actual chart image -->
+        <img src="assets/project1-chart.png" alt="Monthly Revenue Chart" class="rounded-lg shadow-md">
+      </div>
+    </section>
+
+    <!-- Insights -->
+    <section id="insights">
+      <h2 class="text-2xl font-semibold mb-2">Key Insights</h2>
+      <ul class="list-disc list-inside">
+        <li>Insight 1: Describe finding.</li>
+        <li>Insight 2: Describe finding.</li>
+        <li>Recommended action: How business should act.</li>
+      </ul>
+    </section>
+
+    <!-- Next Steps / Conclusion -->
+    <section id="conclusion">
+      <h2 class="text-2xl font-semibold mb-2">Next Steps</h2>
+      <p>Outline further analyses, advanced modeling, or deployment plans.</p>
+    </section>
+
+  </main>
+
+  <footer class="bg-white py-6 text-center text-gray-600">
+    &copy; 2025 Your Name. All rights reserved.
+  </footer>
+
+  <!-- Prism.js for syntax highlighting (optional) -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.25.0/themes/prism-tomorrow.min.css" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.25.0/prism.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.25.0/components/prism-r.min.js"></script>
+</body>
+</html>
 
