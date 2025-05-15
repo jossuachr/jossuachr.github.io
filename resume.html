@@ -1,37 +1,56 @@
 <!-- resume.html -->
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" x-data="{ lang: 'fr' }">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Jossua Chartier – Résumé</title>
-  <!-- Tailwind for styling -->
+  <title>Your Name – Resume</title>
+  <!-- Tailwind CSS -->
   <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Alpine.js for language toggle -->
+  <script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
 </head>
-<body class="bg-gray-50 text-gray-800 flex flex-col h-screen m-0">
+<body class="flex flex-col h-screen bg-gray-50 text-gray-800 m-0">
 
   <!-- NAVIGATION -->
-  <nav class="bg-white shadow-md">
-    <div class="max-w-5xl mx-auto px-6 py-4 flex justify-between items-center h-16">
-      <a href="index.html" class="font-bold text-xl">Jossua Chartier</a>
-      <!-- Download link for the PDF directly -->
-      <a href="assets/resume.pdf" download class="text-indigo-600 font-medium hover:underline">
-        Download
-      </a>
+  <nav class="bg-white shadow-md fixed w-full z-10">
+    <div class="max-w-5xl mx-auto px-6 py-4 flex justify-between items-center">
+      <a href="index.html" class="font-bold text-xl">YourName</a>
+      <div class="flex items-center space-x-4">
+        <!-- Language Toggle Buttons -->
+        <button @click="lang = 'fr'"
+                :class="lang === 'fr' ? 'text-indigo-600 font-semibold' : 'text-gray-600'"
+                class="hover:text-indigo-500">
+          CV FR
+        </button>
+        <button @click="lang = 'en'"
+                :class="lang === 'en' ? 'text-indigo-600 font-semibold' : 'text-gray-600'"
+                class="hover:text-indigo-500">
+          CV EN
+        </button>
+        <!-- Download Link -->
+        <a :href="lang === 'fr' ? 'assets/resume.pdf' : 'assets/resume-en.pdf'"
+           download
+           class="ml-4 text-indigo-600 font-medium hover:underline">
+          Download CV
+        </a>
+      </div>
     </div>
   </nav>
 
-  <!-- EMBED PDF BELOW NAV -->
-  <main class="flex-1 relative">
+  <!-- EMBEDDED PDF -->
+  <main class="flex-1 relative mt-16">
     <object
-      data="assets/resume.pdf"
       type="application/pdf"
+      :data="lang === 'fr' ? 'assets/resume.pdf' : 'assets/resume-en.pdf'"
       class="absolute inset-0 w-full h-full"
     >
       <p class="p-6 text-center">
-        Your browser doesn’t support embedded PDFs.  
-        <a href="assets/resume.pdf" download class="text-indigo-600 underline">
-          Click here to download your CV.
+        Your browser doesn’t support embedded PDFs.<br/>
+        <a :href="lang === 'fr' ? 'assets/resume.pdf' : 'assets/resume-en.pdf'"
+           download
+           class="text-indigo-600 underline">
+          Download CV instead
         </a>
       </p>
     </object>
@@ -39,7 +58,7 @@
 
   <!-- FOOTER -->
   <footer class="bg-white text-center py-4 text-gray-600">
-    &copy; 2025 Jossua Chartier. All rights reserved.
+    &copy; 2025 Your Name. All rights reserved.
   </footer>
 </body>
 </html>
