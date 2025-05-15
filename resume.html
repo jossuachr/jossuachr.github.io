@@ -4,7 +4,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Your Name – Resume</title>
+  <title>Jossua Chartier – Résumé</title>
   <!-- Tailwind CSS -->
   <script src="https://cdn.tailwindcss.com"></script>
   <!-- Alpine.js for language toggle -->
@@ -15,18 +15,18 @@
   <!-- NAVIGATION -->
   <nav class="bg-white shadow-md fixed w-full z-10">
     <div class="max-w-5xl mx-auto px-6 py-4 flex justify-between items-center">
-      <a href="index.html" class="font-bold text-xl">YourName</a>
+      <a href="index.html" class="font-bold text-xl">Jossua Chartier</a>
       <div class="flex items-center space-x-4">
         <!-- Language Toggle Buttons -->
         <button @click="lang = 'fr'"
                 :class="lang === 'fr' ? 'text-indigo-600 font-semibold' : 'text-gray-600'"
                 class="hover:text-indigo-500">
-          CV FR
+          CV - Français
         </button>
         <button @click="lang = 'en'"
                 :class="lang === 'en' ? 'text-indigo-600 font-semibold' : 'text-gray-600'"
                 class="hover:text-indigo-500">
-          CV EN
+          CV - English
         </button>
         <!-- Download Link -->
         <a :href="lang === 'fr' ? 'assets/resume.pdf' : 'assets/resume-en.pdf'"
@@ -58,7 +58,7 @@
 
   <!-- FOOTER -->
   <footer class="bg-white text-center py-4 text-gray-600">
-    &copy; 2025 Your Name. All rights reserved.
+    &copy; 2025 Jossua Chartier. All rights reserved.
   </footer>
 </body>
 </html>
