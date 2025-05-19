@@ -24,11 +24,14 @@
     <!-- Header -->
     <header>
       <h1 class="text-4xl font-extrabold mb-2">DataFest Mizzou 2025 – Best in Show</h1>
-      <p class="text-gray-600">Leading the RStudio Wizards team, we delivered an end-to-end analysis pipeline on industry-provided data, culminating in interactive dashboards and actionable recommendations.</p>
-      <details class="mt-4">
-        <summary class="cursor-pointer text-indigo-600 hover:underline">Show Full R Script</summary>
-        <pre class="bg-gray-800 text-white p-4 rounded-lg overflow-x-auto mt-2"><code>
-# Load libraries
+      <p class="text-gray-600">Leading the RStudio Wizards team, we delivered a comprehensive analysis and interactive dashboard on industry-provided data.</p>
+    </header>
+
+    <!-- Full Script -->
+    <details class="mb-8">
+      <summary class="cursor-pointer text-indigo-600 font-semibold">Show Full R Script</summary>
+      <pre class="bg-gray-800 text-white p-4 rounded-lg overflow-x-auto mt-2 language-r"><code>
+# Load Libraries
 library(tidyverse)
 library(randomForest)
 library(scales)
@@ -39,157 +42,109 @@ library(sf)
 library(leaflet)
 library(shiny)
 
-# Read data
-df_unemp  <- read.csv("assets/Unemployment.csv", stringsAsFactors=TRUE)
-df_price  <- read.csv("assets/PriceAndAvailability.csv", stringsAsFactors=TRUE)
-df_market <- read.csv("assets/MajorMarket.csv", stringsAsFactors=TRUE)
-df_leases <- read.csv("assets/Leases.csv", stringsAsFactors=TRUE)
+# Read Data
+Unemployment <- read.csv("~/Downloads/Unemployment.csv", stringsAsFactors = TRUE)
+PriceAvailability <- read.csv("~/Downloads/Price and Availability Data.csv", stringsAsFactors = TRUE)
+MajorMarket <- read.csv("~/Downloads/Major Market Occupancy Data-revised.csv", stringsAsFactors = TRUE)
+Leases <- read.csv("~/Downloads/Leases.csv", stringsAsFactors = TRUE)
 
-# Merge datasets
-leases_full <- df_leases %>%
-  merge(df_unemp, by = c("year","quarter","state"), all.x=TRUE) %>%
-  merge(df_market, by = c("year","quarter","market"), all.x=TRUE)
+# Merge Datasets
+Leases <- merge(Leases, Unemployment, by = c("year", "quarter", "state"), all.x = TRUE)
+Leases <- merge(Leases, MajorMarket, by = c("year", "quarter", "market"), all.x = TRUE)
 
-# Clean & feature engineer
-leases_clean <- leases_full %>%
-  group_by(lease_id) %>%
-  summarize(overall_rent = sum(rent_amount), .groups='drop') %>%
-  left_join(leases_full, by="lease_id") %>%
-  mutate(price_category = ifelse(predicted_rent > overall_rent, "Under", "Over"))
+# Mode Function
+get_mode <- function(x) {
+  ux <- unique(x);
+  ux[which.max(tabulate(match(x, ux)))]
+}
 
-# Train-test split
+# Group Summarize
+grouped_data <- Leases %>%
+  group_by(overall_rent) %>%
+  summarize(
+    unemployment_rate = mean(unemployment_rate, na.rm = TRUE),
+    avg_occupancy_proportion = mean(avg_occupancy_proportion, na.rm = TRUE),
+    leasedSF = mean(leasedSF, na.rm = TRUE),
+    RBA = mean(RBA, na.rm = TRUE),
+    availability_proportion = mean(availability_proportion, na.rm = TRUE),
+    market = get_mode(market),
+    zip = get_mode(zip),
+    internal_class = get_mode(internal_class),
+    transaction_type = get_mode(transaction_type),
+    space_type = get_mode(space_type),
+    CBD_suburban = get_mode(CBD_suburban),
+    year = get_mode(year),
+    monthsigned = get_mode(monthsigned),
+    .groups = 'drop'
+  )
+head(grouped_data)
+
+# EDA Plots
+# Example: Histogram of overall rent
+ggplot(grouped_data, aes(x = overall_rent)) +
+  geom_histogram(bins = 30, fill = 'steelblue', alpha = 0.8) +
+  labs(title = 'Distribution of Overall Rent', x = 'Overall Rent', y = 'Count')
+
+# Random Forest Modeling
 set.seed(123)
-split_data <- initial_split(leases_clean, strata=price_category)
+split_data <- initial_split(grouped_data, strata = overall_rent)
 train_data <- training(split_data)
-test_data  <- testing(split_data)
+test_data <- testing(split_data)
 
-# Model spec & tuning
-rf_spec <- rand_forest(mode="regression", trees=1000, mtry=tune(), min_n=tune()) %>%
-  set_engine("ranger")
+rf_spec <- rand_forest(
+  mode = 'regression',
+  trees = 1000,
+  mtry = tune(),
+  min_n = tune()
+) %>% set_engine('ranger')
 
-market_recipe <- recipe(overall_rent ~ median_income + unemployment_rate + lease_duration_months + market_size,
-                         data=train_data) %>%
-  step_impute_median(all_numeric()) %>%
-  step_dummy(all_nominal()) %>%
-  step_normalize(all_numeric())
+rf_recipe <- recipe(overall_rent ~ unemployment_rate + avg_occupancy_proportion + leasedSF + RBA + availability_proportion,
+                    data = train_data) %>%
+  step_impute_median(all_numeric(), -all_outcomes()) %>%
+  step_normalize(all_numeric(), -all_outcomes())
 
-wf <- workflow() %>%
-  add_recipe(market_recipe) %>%
-  add_model(rf_spec)
+rf_wf <- workflow() %>%
+  add_model(rf_spec) %>%
+  add_recipe(rf_recipe)
 
-rf_grid <- grid_regular(mtry(range=c(2,5)), min_n(range=c(5,20)), levels=4)
+rf_grid <- grid_random(mtry(range = c(2, 5)), min_n(range = c(5, 20)), size = 20)
+cv <- vfold_cv(train_data, v = 5)
 
-set.seed(456)
-rf_tune <- tune_grid(wf, resamples=vfold_cv(train_data, v=5), grid=rf_grid, metrics=metric_set(rmse, rsq))
+tune_res <- tune_grid(rf_wf, resamples = cv, grid = rf_grid, metrics = metric_set(rmse, rsq))
 
-best_params <- rf_tune %>% select_best("rmse")
-final_wf <- finalize_workflow(wf, best_params)
-final_fit <- final_wf %>% last_fit(split_data)
+best_params <- select_best(tune_res, 'rmse')
+final_wf <- finalize_workflow(rf_wf, best_params)
+final_fit <- last_fit(final_wf, split_data)
 
-# Interpretability
-vip(final_fit$.workflow[[1]] %>% extract_fit_parsnip())
-ale_income <- FeatureEffect$new(final_fit$.workflow[[1]] %>% extract_fit_parsnip(), feature="median_income", method="ale")
-ale_unemp  <- FeatureEffect$new(final_fit$.workflow[[1]] %>% extract_fit_parsnip(), feature="unemployment_rate", method="ale")
+# Variable Importance & ALE
+top_vip <- vip::vip(extract_fit_parsnip(final_wf %>% fit(train_data)))
+ale_income <- FeatureEffect$new(extract_fit_parsnip(final_wf %>% fit(train_data)), 'unemployment_rate', method = 'ale')
 
-# Shiny app launch (simplified)
-# shinyApp(ui=app_ui, server=app_server)
-        </code></pre>
-      </details>
-    </header>
+# Geospatial Mapping
+us_map <- MajorMarket %>%
+  filter(state %in% c('GA', 'TX', 'MD', 'MA')) %>%
+  group_by(market) %>%
+  summarize(avg_rent = mean(overall_rent, na.rm = TRUE)) %>%
+  left_join(states_sf, by = 'state') %>%
+  st_as_sf()
+leaflet(us_map) %>% addTiles() %>% addPolygons(fillColor = ~pal(avg_rent))
 
-    <!-- Data & Libraries -->
-    <section id="libraries">
-      <h2 class="text-2xl font-semibold mb-2">Data &amp; Libraries</h2>
-      <p class="text-gray-700 mb-4">Our analysis was conducted entirely in R, leveraging key libraries for data wrangling, modeling, and visualization.</p>
-    </section>
+# Dashboard (Shiny) Launch commented
+# shinyApp(ui = app_ui, server = app_server)
+      </code></pre>
+    </details>
 
-    <!-- Data Cleaning & Manipulation -->
-    <section id="data-cleaning">
-      <h2 class="text-2xl font-semibold mb-2">Data Cleaning &amp; Manipulation</h2>
-      <ul class="list-disc list-inside text-gray-700">
-        <li>Merged lease, unemployment, and market datasets using year, quarter, and region keys.</li>
-        <li>Grouped by lease ID to compute overall rent and engineered price category.</li>
-      </ul>
-      <details>
-        <summary class="cursor-pointer text-indigo-600 hover:underline">Show Cleaning Code</summary>
-        <pre class="bg-gray-800 text-white p-4 rounded-lg overflow-x-auto mt-2"><code>
-# Merge datasets
-leases_full <- df_leases %>%
-  merge(df_unemp, by = c("year","quarter","state"), all.x=TRUE) %>%
-  merge(df_market, by = c("year","quarter","market"), all.x=TRUE)
-
-# Clean & feature engineer
-leases_clean <- leases_full %>%
-  group_by(lease_id) %>%
-  summarize(overall_rent = sum(rent_amount), .groups='drop') %>%
-  left_join(leases_full, by="lease_id") %>%
-  mutate(price_category = ifelse(predicted_rent > overall_rent, "Under", "Over"))
-        </code></pre>
-      </details>
-    </section>
-
-    <!-- Modeling -->
-    <section id="modeling">
-      <h2 class="text-2xl font-semibold mb-2">Modeling &amp; Evaluation</h2>
-      <ul class="list-disc list-inside text-gray-700">
-        <li>Trained a Random Forest regressor with 1,000 trees.</li>
-        <li>Tuned <code>mtry</code> and <code>min_n</code> via grid search and 5-fold CV.</li>
-        <li>Final performance: R² = 0.85, RMSE = $45.</li>
-      </ul>
-      <details>
-        <summary class="cursor-pointer text-indigo-600 hover:underline">Show Modeling Code</summary>
-        <pre class="bg-gray-800 text-white p-4 rounded-lg overflow-x-auto mt-2"><code>
-# Model spec & tuning
-rf_spec <- rand_forest(mode="regression", trees=1000, mtry=tune(), min_n=tune()) %>%
-  set_engine("ranger")
-
-market_recipe <- recipe(overall_rent ~ median_income + unemployment_rate + lease_duration_months + market_size,
-                         data=train_data) %>%
-  step_impute_median(all_numeric()) %>%
-  step_dummy(all_nominal()) %>%
-  step_normalize(all_numeric())
-
-wf <- workflow() %>%
-  add_recipe(market_recipe) %>%
-  add_model(rf_spec)
-
-rf_grid <- grid_regular(mtry(range=c(2,5)), min_n(range=c(5,20)), levels=4)
-
-set.seed(456)
-rf_tune <- tune_grid(wf, resamples=vfold_cv(train_data, v=5), grid=rf_grid, metrics=metric_set(rmse, rsq))
-
-best_params <- rf_tune %>% select_best("rmse")
-final_wf <- finalize_workflow(wf, best_params)
-final_fit <- final_wf %>% last_fit(split_data)
-        </code></pre>
-      </details>
-    </section>
-
-    <!-- Interpretability -->
-    <section id="interpretability">
-      <h2 class="text-2xl font-semibold mb-2">Interpretability</h2>
-      <details>
-        <summary class="cursor-pointer text-indigo-600 hover:underline">Show VIP & ALE Code</summary>
-        <pre class="bg-gray-800 text-white p-4 rounded-lg overflow-x-auto mt-2"><code>
-# Variable importance and ALE
-vip(final_fit$.workflow[[1]] %>% extract_fit_parsnip())
-ale_income <- FeatureEffect$new(final_fit$.workflow[[1]] %>% extract_fit_parsnip(), feature="median_income", method="ale")
-ale_unemp  <- FeatureEffect$new(final_fit$.workflow[[1]] %>% extract_fit_parsnip(), feature="unemployment_rate", method="ale")
-        </code></pre>
-      </details>
-    </section>
-
-    <!-- Conclusion & Next Steps -->
-    <section id="conclusion">
-      <h2 class="text-2xl font-semibold mb-2">Conclusions &amp; Next Steps</h2>
-      <p class="text-gray-700">To integrate images, GIFs, and other media:</p>
-      <ol class="list-decimal list-inside text-gray-700 mb-4">
-        <li>Place your media files (PNG, JPG, GIF) in the <code>assets/</code> directory of your project.</li>
-        <li>Reference them with a relative path in your HTML: <code>&lt;img src=&quot;assets/your_image.png&quot; alt=&quot;Description&quot;&gt;</code>.</li>
-        <li>For animated GIFs, use the same <code>&lt;img&gt;</code> tag; browsers will render the animation automatically.</li>
-        <li>Ensure you commit the <code>assets/</code> folder to GitHub so that your portfolio can display them live.</li>
+    <!-- Conclusion & Media Instructions -->
+    <section id="media">
+      <h2 class="text-2xl font-semibold mb-2">Adding Images and GIFs</h2>
+      <p class="text-gray-700 mb-4">To include media in this page:</p>
+      <ol class="list-decimal list-inside text-gray-700">
+        <li>Place files in <code>assets/</code> (e.g., <code>assets/datafest_eda1.png</code>).</li>
+        <li>Use an <code>&lt;img&gt;</code> tag with a relative path:</li>
+<pre class="bg-gray-200 p-2 rounded"><code>&lt;img src="assets/datafest_eda1.png" alt="EDA Plot 1" class="w-full rounded shadow"&gt;</code></pre>
+        <li>For GIFs, same tag applies (browsers will animate automatically).</li>
+        <li>Commit <code>assets/</code> to GitHub for live hosting.</li>
       </ol>
-      <p class="text-gray-700">Feel free to adjust widths or add <code>class="w-full md:w-3/4 mx-auto"</code> for responsive sizing.</p>
     </section>
 
   </main>
