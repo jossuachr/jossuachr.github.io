@@ -1,1 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>DataFest 2025 – SMS Spam Classification (Best in Show)</title>
+  <link rel="stylesheet" href="../css/style.css">
+</head>
+<body>
+  <!-- Header -->
+  <header class="site-header">
+    <nav>
+      <ul class="nav-list">
+        <li><a href="../index.html">Home</a></li>
+        <li><a href="../projects.html" class="active">Projects</a></li>
+        <li><a href="../blog.html">Blog</a></li>
+        <li><a href="../about.html">About</a></li>
+      </ul>
+    </nav>
+  </header>
+
+  <main class="project-page">
+    <section class="project-intro">
+      <h1>DataFest 2025: SMS Spam Classification</h1>
+      <p>Proud winners of <strong>Best in Show</strong> at DataFest Mizzou 2025 with our SMS spam detection pipeline, built end-to-end in R using <code>tidymodels</code>.</p>
+    </section>
+
+    <section id="overview">
+      <h2>Project Overview</h2>
+      <p>The goal was to accurately classify SMS messages as <em>spam</em> or <em>ham</em>. We leveraged the publicly available SMS Spam Collection dataset (5,574 messages) and implemented a reproducible workflow:</p>
+      <ol>
+        <li>Data import and cleaning</li>
+        <li>Exploratory data analysis (EDA)</li>
+        <li>Text preprocessing (tokenization, stop-word removal, TF-IDF)</li>
+        <li>Model tuning with random forest (ranger engine)</li>
+        <li>Final evaluation and interpretation</li>
+      </ol>
+    </section>
+
+    <section id="data-exploration">
+      <h2>Data Exploration</h2>
+      <p>Imported and cleaned with <code>readr</code> and <code>janitor</code>. We examined class balance and sampled messages:</p>
+      <figure>
+        <img src="../assets/class_balance.png" alt="Class balance bar chart showing ~86% ham and ~14% spam" />
+        <figcaption>Figure 1. Class distribution of SMS messages.</figcaption>
+      </figure>
+      <figure>
+        <img src="../assets/sample_messages.png" alt="Sample SMS messages by type" />
+        <figcaption>Figure 2. Random samples of ham vs. spam messages.</figcaption>
+      </figure>
+    </section>
+
+    <section id="preprocessing">
+      <h2>Text Preprocessing</h2>
+      <p>Using <code>textrecipes</code>, we built a recipe that:</p>
+      <ul>
+        <li>Tokenizes text into individual words (`step_tokenize`)</li>
+        <li>Removes English stop words (`step_stopwords`)</li>
+        <li>Filters to the top 1,000 most frequent tokens (`step_tokenfilter`)</li>
+        <li>Transforms to TF-IDF features (`step_tfidf`)</li>
+      </ul>
+      <figure>
+        <img src="../assets/tfidf_example.png" alt="Heatmap excerpt of TF-IDF matrix" />
+        <figcaption>Figure 3. Example TF-IDF feature values for a few tokens.</figcaption>
+      </figure>
+    </section>
+
+    <section id="modeling">
+      <h2>Modeling &amp; Tuning</h2>
+      <p>We specified a Random Forest classifier with 1,000 trees and tuned two hyperparameters (<code>mtry</code> and <code>min_n</code>) using 5-fold cross-validation:</p>
+      <figure>
+        <img src="../assets/tuning_results.png" alt="Heatmap of tuning results (ROC AUC across parameter grid)" />
+        <figcaption>Figure 4. Grid search results for ROC AUC across tuning parameters.</figcaption>
+      </figure>
+      <p>The best combination (<code>mtry = 20</code>, <code>min_n = 4</code>) yielded a mean <strong>ROC AUC</strong> of <em>0.986</em> on validation folds.</p>
+    </section>
+
+    <section id="final-evaluation">
+      <h2>Final Evaluation</h2>
+      <p>Evaluated on the held-out test set:</p>
+      <table>
+        <thead>
+          <tr><th>Metric</th><th>Value</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Accuracy</td><td>0.973</td></tr>
+          <tr><td>ROC AUC</td><td>0.988</td></tr>
+        </tbody>
+      </table>
+      <figure>
+        <img src="../assets/roc_curve.png" alt="ROC curve for the final random forest model" />
+        <figcaption>Figure 5. ROC curve for final model on test data.</figcaption>
+      </figure>
+    </section>
+
+    <section id="variable-importance">
+      <h2>Variable Importance</h2>
+      <p>We extracted feature importances from the Ranger engine to identify the top predictive tokens:</p>
+      <figure>
+        <img src="../assets/var_importance.png" alt="Bar chart of top 20 important tokens" />
+        <figcaption>Figure 6. Top 20 tokens by importance.</figcaption>
+      </figure>
+    </section>
+
+    <section id="conclusion">
+      <h2>Conclusions</h2>
+      <p>This pipeline achieved >97% accuracy and highlighted key terms like <em>free</em>, <em>call</em>, and <em>claim</em> as strong spam indicators. The modular recipe and workflow ensure reproducibility and easy extension (e.g., adding alternative classifiers or deploying via Shiny).</p>
+    </section>
+
+    <section id="downloads">
+      <h2>Downloads</h2>
+      <p>
+        <a href="../assets/datafest2025_report.pdf" download>Full Report (PDF)</a>
+        &nbsp;|&nbsp;
+        <a href="../assets/datafest2025_slides.pdf" download>Presentation Slides (PDF)</a>
+      </p>
+    </section>
+  </main>
+
+  <!-- Footer -->
+  <footer class="site-footer">
+    <p>&copy; 2025 Jossua Chartier. All rights reserved.</p>
+    <p><a href="../privacy.html">Privacy Policy</a> | <a href="../contact.html">Contact</a></p>
+  </footer>
+</body>
+</html>
 
