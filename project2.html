@@ -14,7 +14,6 @@
 </head>
 <body class="bg-gray-50 text-gray-800 leading-relaxed">
 
-  <!-- NAVIGATION -->
   <nav class="bg-white shadow-md fixed w-full z-10">
     <div class="max-w-6xl mx-auto px-6 py-4 flex justify-between items-center">
       <a href="index.html" class="text-xl font-bold hover:text-indigo-600">&larr; Home</a>
@@ -23,120 +22,195 @@
   </nav>
 
   <main class="pt-24 max-w-4xl mx-auto px-6 py-12 space-y-12">
-    <!-- Project Header -->
+
+    <!-- Header -->
     <header>
-      <h1 class="text-4xl font-extrabold mb-2">DataFest 2025 – Best in Show</h1>
-      <p class="text-gray-600">As lead analyst of the RStudio Wizards team, I designed and implemented an end‑to‑end data science workflow on commercial lease data, combining statistical modeling and geospatial visualization to deliver actionable insights and an interactive dashboard—earning Best in Show.</p>
+      <h1 class="text-4xl font-extrabold mb-2">DataFest Mizzou 2025 – Best in Show</h1>
+      <p class="text-gray-600">For DataFest, our RStudio Wizards team crafted a full data science pipeline—data cleaning, modeling, interpretability, and geospatial visualization—to analyze commercial lease pricing. As Lead Analyst, I authored each step in R and built the interactive dashboard that secured Best in Show.</p>
     </header>
 
-    <!-- Business Problem -->
-    <section id="problem">
-      <h2 class="text-2xl font-semibold mb-2">Business Problem</h2>
-      <p>Our sponsors sought a transparent method to:</p>
-      <ul class="list-disc pl-6 text-gray-700">
-        <li>Quantify the impact of economic indicators (e.g., unemployment) on lease pricing.</li>
-        <li>Detect leases that were under‑ or over‑valued relative to model predictions.</li>
-        <li>Provide an interactive map for stakeholders to explore market dynamics.</li>
-      </ul>
-      <p>We aimed to bridge data engineering, predictive modeling, and user‑friendly geovisualization into a single, reproducible pipeline.</p>
+    <!-- 1. Load Data & Libraries -->
+    <section id="load">
+      <h2 class="text-2xl font-semibold mb-2">1. Load Data &amp; Libraries</h2>
+      <details class="mb-4">
+        <summary class="cursor-pointer font-medium text-indigo-600">Show R code</summary>
+        <pre class="bg-gray-100 p-4 rounded overflow-x-auto"><code class="language-r">Unemployment <- read.csv("Unemployment.csv", stringsAsFactors=TRUE)
+PriceAvailability <- read.csv("PriceandAvailability.csv", stringsAsFactors=TRUE)
+MajorMarket <- read.csv("MajorMarket.csv", stringsAsFactors=TRUE)
+Leases <- read.csv("Leases.csv", stringsAsFactors=TRUE)
+
+library(tidyverse)
+library(randomForest)
+library(scales)
+library(lubridate)
+library(ranger)
+library(iml)
+library(sf)
+library(leaflet)
+library(shiny)
+</code></pre>
+      </details>
+      <p>We imported four datasets and loaded core libraries for data manipulation (<code>tidyverse</code>), modeling (<code>randomForest</code>, <code>ranger</code>), interpretability (<code>iml</code>), and mapping (<code>leaflet</code>).</p>
     </section>
 
-    <!-- Data & Cleaning -->
-    <section id="data">
-      <h2 class="text-2xl font-semibold mb-2">Data Loading &amp; Cleaning</h2>
-      <p>We loaded four CSVs—Leases, Unemployment, Price &amp; Availability, Major Market—and merged them by <code>year</code>, <code>quarter</code>, <code>state</code>, and <code>market</code>. Key steps:</p>
-      <ul class="list-disc pl-6 text-gray-700">
-        <li>Grouped by <code>lease_id</code> to compute <strong>overall_rent</strong> (sum of payments).</li>
-        <li>Imputed numeric fields with median and categorical fields with mode functions.</li>
-        <li>Engineered <strong>price_category</strong> indicating under‑ or over‑valuation based on model residuals.</li>
-      </ul>
+    <!-- 2. Data Cleaning & Feature Engineering -->
+    <section id="cleaning">
+      <h2 class="text-2xl font-semibold mb-2">2. Data Cleaning &amp; Feature Engineering</h2>
+      <details class="mb-4">
+        <summary class="cursor-pointer font-medium text-indigo-600">Show R code</summary>
+        <pre class="bg-gray-100 p-4 rounded overflow-x-auto"><code class="language-r"># Join datasets
+Leases <- merge(Leases, Unemployment, by=c("year","quarter","state"), all.x=TRUE)
+Leases <- merge(Leases, MajorMarket, by=c("year","quarter","market"), all.x=TRUE)
+
+# Remove duplicates & aggregate
+get_mode <- function(x) { ux <- unique(x); ux[which.max(tabulate(match(x, ux)))] }
+grouped_data <- Leases %>%
+  group_by(lease_id) %>%
+  summarize(
+    overall_rent = sum(rent_amount),
+    unemployment_rate = mean(unemployment_rate, na.rm=TRUE),
+    avg_occupancy_proportion = mean(avg_occupancy_proportion, na.rm=TRUE),
+    leasedSF = mean(leasedSF, na.rm=TRUE),
+    RBA = mean(RBA, na.rm=TRUE),
+    availability_proportion = mean(availability_proportion, na.rm=TRUE),
+    market = get_mode(market),
+    zip = get_mode(zip),
+    internal_class = get_mode(internal_class),
+    transaction_type = get_mode(transaction_type),
+    space_type = get_mode(space_type),
+    .groups='drop'
+  )
+
+# Impute missing values
+impute_mode <- function(x) { mode_val <- names(sort(table(x),decreasing=TRUE))[1]; x[is.na(x)]<-mode_val; x }
+impute_mean <- function(df) { num <- sapply(df,is.numeric); df[num] <- lapply(df[num],function(x){ x[is.na(x)]<-mean(x,na.rm=TRUE); x}); df }
+grouped_data$space_type <- impute_mode(grouped_data$space_type)
+grouped_data <- impute_mean(grouped_data)
+</code></pre>
+      </details>
+      <p>This stage merged all tables on common keys, collapsed duplicates by <code>lease_id</code>, and computed summary statistics like <strong>overall_rent</strong>. We then imputed numeric NAs with column means and categorical NAs with modal values to ensure a clean dataset for modeling.</p>
     </section>
 
-    <!-- EDA Figures -->
-    <section id="eda">
-      <h2 class="text-2xl font-semibold mb-2">Exploratory Data Analysis</h2>
-      <p>Initial EDA highlighted distributional properties and feature relationships:</p>
-      <figure class="mb-6">
-        <img src="assets/datafest_eda1.png" alt="Histogram of Overall Rent" class="rounded shadow-md">
-        <figcaption class="text-sm text-gray-600 mt-2">Figure 1. Distribution of overall rent (right-skewed with most leases below \$2000).</figcaption>
-      </figure>
-      <figure class="mb-6">
-        <img src="assets/datafest_eda2.png" alt="Correlation Heatmap" class="rounded shadow-md">
-        <figcaption class="text-sm text-gray-600 mt-2">Figure 2. Correlation heatmap showing strong relationships among rent, occupancy, and economic metrics.</figcaption>
-      </figure>
-      <p>These visualizations informed feature selection—for instance, high collinearity between occupancy and availability metrics led us to combine them judiciously in modeling.</p>
+    <!-- 3. Random Forest Modeling -->
+    <section id="rf">
+      <h2 class="text-2xl font-semibold mb-2">3. Random Forest Modeling</h2>
+      <details class="mb-4">
+        <summary class="cursor-pointer font-medium text-indigo-600">Show R code</summary>
+        <pre class="bg-gray-100 p-4 rounded overflow-x-auto"><code class="language-r"># Train Random Forest
+tune_data <- grouped_data
+rf_model <- randomForest(overall_rent ~ unemployment_rate + avg_occupancy_proportion + leasedSF + RBA + availability_proportion, data=tune_data, importance=TRUE)
+
+# Predictions & Price Category
+grouped_data$predicted_rent <- predict(rf_model, grouped_data)
+grouped_data$price_category <- ifelse(grouped_data$overall_rent > grouped_data$predicted_rent, 'Underpriced', 'Overpriced')
+</code></pre>
+      </details>
+      <p>We fit a Random Forest regressor focusing on five key predictors. The model explained approximately 85% of rent variance, enabling us to flag leases whose actual rent deviated positively or negatively from predictions.</p>
     </section>
 
-    <!-- Modeling -->
-    <section id="modeling">
-      <h2 class="text-2xl font-semibold mb-2">Random Forest Modeling</h2>
-      <p>We trained a Random Forest regressor to predict <code>overall_rent</code>:</p>
-      <ul class="list-disc pl-6 text-gray-700 mb-4">
-        <li>Data split: 80/20 training/testing stratified by <code>year</code> to preserve temporal structure.</li>
-        <li>Tuning: <code>mtry</code> (number of variables tried at each split) and <code>min_n</code> via 5‑fold cross‑validation.</li>
-        <li>Final metrics on test set: <strong>R² = 0.85</strong>, <strong>RMSE ≈ \$45</strong>.</li>
-      </ul>
+    <!-- 4. Variable Importance -->
+    <section id="vip">
+      <h2 class="text-2xl font-semibold mb-2">4. Variable Importance</h2>
       <figure class="mb-6">
-        <img src="assets/datafest_model_performance.png" alt="Model Performance Chart" class="rounded shadow-md">
-        <figcaption class="text-sm text-gray-600 mt-2">Figure 3. RMSE vs. R² across tuning grid; optimal trade‑off achieved.</figcaption>
+        <img src="assets/datafest_vip_plot.png" alt="Variable Importance for RF Model" class="rounded shadow-md">
+        <figcaption class="text-sm text-gray-600 mt-2">Figure 3. Variable Importance: median income, availability proportion, and RBA are top drivers.</figcaption>
       </figure>
+      <p>The importance ranking showed economic and space usage metrics consistently influenced rent predictions, validating domain expectations about market dynamics.</p>
     </section>
 
-    <!-- Interpretability -->
-    <section id="interpretability">
-      <h2 class="text-2xl font-semibold mb-2">Interpretability Analysis</h2>
-      <p>Using the <code>iml</code> package, we inspected feature effects:</p>
-      <figure class="mb-6">
-        <img src="assets/datafest vip.png" alt="Variable Importance Plot" class="rounded shadow-md">
-        <figcaption class="text-sm text-gray-600 mt-2">Figure 4. Top predictors: median income, occupancy proportion, and rentable building area (RBA).</figcaption>
-      </figure>
+    <!-- 5. ALE Plots -->
+    <section id="ale">
+      <h2 class="text-2xl font-semibold mb-2">5. Accumulated Local Effects (ALE)</h2>
+      <details class="mb-4">
+        <summary class="cursor-pointer font-medium text-indigo-600">Show R code</summary>
+        <pre class="bg-gray-100 p-4 rounded overflow-x-auto"><code class="language-r">library(iml)
+predictor <- Predictor$new(rf_model, data=grouped_data, y=grouped_data$overall_rent)
+ale_avail <- FeatureEffect$new(predictor, feature='availability_proportion', method='ale')
+plot(ale_avail)
+
+ale_unemp <- FeatureEffect$new(predictor, feature='unemployment_rate', method='ale')
+plot(ale_unemp)
+</code></pre>
+      </details>
       <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
         <figure>
-          <img src="assets/ale av pro.png" alt="ALE for Unemployment Rate" class="rounded shadow-md">
-          <figcaption class="text-sm text-gray-600 mt-2">Figure 5. ALE plot: unemployment rate impact (diminishing returns above ~7%).</figcaption>
+          <img src="assets/datafest_ale_plot_availability.png" alt="ALE Availability Proportion" class="rounded shadow-md">
+          <figcaption class="text-sm text-gray-600 mt-2">Figure 4. ALE: Higher availability proportion increases predicted rent nonlinearly.</figcaption>
         </figure>
         <figure>
-          <img src="assets/ale rba.png" alt="ALE for Median Income" class="rounded shadow-md">
-          <figcaption class="text-sm text-gray-600 mt-2">Figure 6. ALE plot: rent increases non‑linearly with median income, plateauing above \$60k.</figcaption>
+          <img src="assets/datafest_ale_plot_unemployment.png" alt="ALE Unemployment Rate" class="rounded shadow-md">
+          <figcaption class="text-sm text-gray-600 mt-2">Figure 5. ALE: Unemployment rate shows diminishing effect above ~7%.</figcaption>
         </figure>
       </div>
+      <p>ALE plots reveal how each feature shifts predicted rent across its range, uncovering nonlinear thresholds vital for stakeholder interpretation.</p>
     </section>
 
-    <!-- Geospatial Map -->
+    <!-- 6. Data Table -->
+    <section id="table">
+      <h2 class="text-2xl font-semibold mb-2">6. Sample Market Table</h2>
+      <p>We created an interactive table of representative markets for 2024:</p>
+      <figure class="mb-6">
+        <img src="assets/datafest_table.png" alt="Distinct Markets Table" class="rounded shadow-md">
+        <figcaption class="text-sm text-gray-600 mt-2">Figure 6. Top 10 distinct markets with rent vs. predicted and price category.</figcaption>
+      </figure>
+      <p>This table allows quick comparison of actual versus predicted rents, highlighting top under- and over-valued markets.</p>
+    </section>
+
+    <!-- 7. Line Plot -->
+    <section id="lineplot">
+      <h2 class="text-2xl font-semibold mb-2">7. Temporal Trends</h2>
+      <figure class="mb-6">
+        <img src="assets/datafest_line_plot.png" alt="Yearly Rent Trends" class="rounded shadow-md">
+        <figcaption class="text-sm text-gray-600 mt-2">Figure 7. Smoothed year-over-year average rent by region with percent-change labels.</figcaption>
+      </figure>
+      <p>We plotted smoothed trends to highlight growth trajectories and annotate percentage changes, offering a clear view of regional rent evolution.</p>
+    </section>
+
+    <!-- 8. Interactive Map -->
     <section id="map-section">
-      <h2 class="text-2xl font-semibold mb-2">Interactive Geospatial Map</h2>
-      <p>We integrated a Leaflet map to visualize average model residuals (under/over valuation) by market. To embed this map on your page:</p>
+      <h2 class="text-2xl font-semibold mb-2">8. Interactive Map Integration</h2>
+      <p>Embed the Leaflet map for market residual visualization by:</p>
       <ol class="list-decimal pl-6 text-gray-700 mb-4">
-        <li>Include Leaflet CSS in your <code>&lt;head&gt;</code>:<br><code>&lt;link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" /&gt;</code></li>
-        <li>Include Leaflet JS before the closing <code>&lt;/body&gt;</code>:<br><code>&lt;script src="https://unpkg.com/leaflet/dist/leaflet.js"&gt;&lt;/script&gt;</code></li>
-        <li>Add a container div:<br><code>&lt;div id="map" class="w-full h-96 rounded shadow"&gt;&lt;/div&gt;</code></li>
-        <li>Initialize the map with your GeoJSON market data:<br>
-<pre class="bg-gray-100 p-2 rounded"><code>const map = L.map('map').setView([39, -98], 4);
+        <li>Include in &lt;head&gt;: <code>&lt;link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" /&gt;</code></li>
+        <li>Before &lt;/body&gt;: <code>&lt;script src="https://unpkg.com/leaflet/dist/leaflet.js"&gt;&lt;/script&gt;</code></li>
+        <li>Add container: <code>&lt;div id="map" class="w-full h-96 rounded shadow"&gt;&lt;/div&gt;</code></li>
+        <li>Initialize:<br><pre class="bg-gray-100 p-2 rounded"><code>const map = L.map('map').setView([39, -98],4);
 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
-L.geoJson(marketGeoJson, { style: feature => ({ fillColor: colorScale(feature.properties.residual), weight: 1 }) }).addTo(map);
-</code></pre>
+L.geoJson(marketGeoJson,{style:f=>({fillColor:colorScale(f.properties.residual)})}).addTo(map);
+</code></pre></li>
       </ol>
       <div id="map" class="w-full h-96 rounded shadow bg-gray-200 flex items-center justify-center">
-        <p class="text-gray-500">[Interactive map will render here]</p>
+        <p class="text-gray-500">[Map will render here]</p>
       </div>
+      <p class="text-gray-600">Supply <code>marketGeoJson</code> as your GeoJSON and <code>colorScale</code> for residual coloring.</p>
     </section>
 
-    <!-- Key Insights -->
+    <!-- 9. Animation -->
+    <section id="animation">
+      <h2 class="text-2xl font-semibold mb-2">9. Lease Valuation Animation</h2>
+      <figure class="mb-6">
+        <img src="assets/datafest_green_red.gif" alt="Under/Over Valuation Animation" class="rounded shadow-md">
+        <figcaption class="text-sm text-gray-600 mt-2">Figure 8. Animated progression of over- vs. under-valued leases over years.</figcaption>
+      </figure>
+      <p>This animation underscores market shifts, making temporal patterns in lease valuation immediately accessible.</p>
+    </section>
+
+    <!-- Insights -->
     <section id="insights">
-      <h2 class="text-2xl font-semibold mb-2">Key Insights &amp; Recommendations</h2>
-      <p>Our integrated analysis provided:</p>
+      <h2 class="text-2xl font-semibold mb-2">Key Insights &amp; Next Steps</h2>
+      <p>Our DataFest analysis delivered:</p>
       <ul class="list-disc pl-6 text-gray-700 mb-4">
-        <li>A reliable predictive model for lease pricing, capturing 85% of variance.</li>
-        <li>Interpretability through ALE, revealing economic thresholds and saturation effects.</li>
-        <li>A geospatial interface for pinpointing under‑ or over‑valued markets in real time.</li>
+        <li>A robust rent prediction model (R²=0.85, RMSE≈45).</li>
+        <li>Interpretability tools revealing non-linear effects of economic indicators.</li>
+        <li>An interactive map and animation for stakeholder engagement.</li>
       </ul>
-      <p>Next steps: deploy the model via a Plumber API for live scoring, and enhance the dashboard with user-driven scenario simulations.</p>
+      <p>We recommend deploying the model via Plumber for real-time rent valuation and expanding the Shiny dashboard with scenario simulation features.</p>
     </section>
 
     <!-- Downloads -->
     <section id="downloads" class="text-center">
-      <a href="assets/datafest report.pdf" download class="px-6 py-3 bg-indigo-600 text-white rounded hover:bg-indigo-700 mr-4">Download Report</a>
-      <a href="assets/datafest slides.pdf" download class="px-6 py-3 border border-indigo-600 text-indigo-600 rounded hover:bg-indigo-50">Slides</a>
+      <a href="assets/datafest2025_report.pdf" download class="px-6 py-3 bg-indigo-600 text-white rounded hover:bg-indigo-700 mr-4">Download Report</a>
+      <a href="assets/datafest2025_slides.pdf" download class="px-6 py-3 border border-indigo-600 text-indigo-600 rounded hover:bg-indigo-50">Slides</a>
     </section>
 
   </main>
