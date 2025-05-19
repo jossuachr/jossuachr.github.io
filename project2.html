@@ -25,145 +25,171 @@
     <header>
       <h1 class="text-4xl font-extrabold mb-2">DataFest Mizzou 2025 – Best in Show</h1>
       <p class="text-gray-600">Leading the RStudio Wizards team, we delivered an end-to-end analysis pipeline on industry-provided data, culminating in interactive dashboards and actionable recommendations.</p>
+      <details class="mt-4">
+        <summary class="cursor-pointer text-indigo-600 hover:underline">Show Full R Script</summary>
+        <pre class="bg-gray-800 text-white p-4 rounded-lg overflow-x-auto mt-2"><code>
+# Load libraries
+library(tidyverse)
+library(randomForest)
+library(scales)
+library(lubridate)
+library(ranger)
+library(iml)
+library(sf)
+library(leaflet)
+library(shiny)
+
+# Read data
+df_unemp  <- read.csv("assets/Unemployment.csv", stringsAsFactors=TRUE)
+df_price  <- read.csv("assets/PriceAndAvailability.csv", stringsAsFactors=TRUE)
+df_market <- read.csv("assets/MajorMarket.csv", stringsAsFactors=TRUE)
+df_leases <- read.csv("assets/Leases.csv", stringsAsFactors=TRUE)
+
+# Merge datasets
+leases_full <- df_leases %>%
+  merge(df_unemp, by = c("year","quarter","state"), all.x=TRUE) %>%
+  merge(df_market, by = c("year","quarter","market"), all.x=TRUE)
+
+# Clean & feature engineer
+leases_clean <- leases_full %>%
+  group_by(lease_id) %>%
+  summarize(overall_rent = sum(rent_amount), .groups='drop') %>%
+  left_join(leases_full, by="lease_id") %>%
+  mutate(price_category = ifelse(predicted_rent > overall_rent, "Under", "Over"))
+
+# Train-test split
+set.seed(123)
+split_data <- initial_split(leases_clean, strata=price_category)
+train_data <- training(split_data)
+test_data  <- testing(split_data)
+
+# Model spec & tuning
+rf_spec <- rand_forest(mode="regression", trees=1000, mtry=tune(), min_n=tune()) %>%
+  set_engine("ranger")
+
+market_recipe <- recipe(overall_rent ~ median_income + unemployment_rate + lease_duration_months + market_size,
+                         data=train_data) %>%
+  step_impute_median(all_numeric()) %>%
+  step_dummy(all_nominal()) %>%
+  step_normalize(all_numeric())
+
+wf <- workflow() %>%
+  add_recipe(market_recipe) %>%
+  add_model(rf_spec)
+
+rf_grid <- grid_regular(mtry(range=c(2,5)), min_n(range=c(5,20)), levels=4)
+
+set.seed(456)
+rf_tune <- tune_grid(wf, resamples=vfold_cv(train_data, v=5), grid=rf_grid, metrics=metric_set(rmse, rsq))
+
+best_params <- rf_tune %>% select_best("rmse")
+final_wf <- finalize_workflow(wf, best_params)
+final_fit <- final_wf %>% last_fit(split_data)
+
+# Interpretability
+vip(final_fit$.workflow[[1]] %>% extract_fit_parsnip())
+ale_income <- FeatureEffect$new(final_fit$.workflow[[1]] %>% extract_fit_parsnip(), feature="median_income", method="ale")
+ale_unemp  <- FeatureEffect$new(final_fit$.workflow[[1]] %>% extract_fit_parsnip(), feature="unemployment_rate", method="ale")
+
+# Shiny app launch (simplified)
+# shinyApp(ui=app_ui, server=app_server)
+        </code></pre>
+      </details>
     </header>
 
     <!-- Data & Libraries -->
     <section id="libraries">
       <h2 class="text-2xl font-semibold mb-2">Data &amp; Libraries</h2>
-      <p class="text-gray-700 mb-4">Our analysis was conducted entirely in R, leveraging:</p>
-      <ul class="list-disc list-inside text-gray-700">
-        <li><code>tidyverse</code> (dplyr, tidyr, ggplot2) for data wrangling and visualization</li>
-        <li><code>lubridate</code> for date manipulation</li>
-        <li><code>iml</code> for model-agnostic interpretation (ALE and importance)</li>
-        <li><code>ranger</code> for efficient Random Forest modeling</li>
-        <li><code>sf</code> and <code>leaflet</code> for geospatial mapping</li>
-        <li><code>shiny</code> for the interactive dashboard</li>
-      </ul>
+      <p class="text-gray-700 mb-4">Our analysis was conducted entirely in R, leveraging key libraries for data wrangling, modeling, and visualization.</p>
     </section>
 
     <!-- Data Cleaning & Manipulation -->
     <section id="data-cleaning">
       <h2 class="text-2xl font-semibold mb-2">Data Cleaning &amp; Manipulation</h2>
-      <p class="text-gray-700 mb-4">We merged three sources—leases, unemployment rates, and market definitions—by <code>year</code>, <code>quarter</code>, and <code>state/market</code>. Steps included:</p>
       <ul class="list-disc list-inside text-gray-700">
-        <li>Joining datasets with <code>merge()</code> to consolidate lease transactions with economic indicators.</li>
-        <li>Grouping to remove duplicate records and compute summary statistics per lease.</li>
-        <li>Imputing missing values using median or mode strategies for numeric and categorical features.</li>
-        <li>Feature engineering: calculated <code>overall_rent</code> and encoded <code>price_category</code> based on predicted vs. actual rent.</li>
+        <li>Merged lease, unemployment, and market datasets using year, quarter, and region keys.</li>
+        <li>Grouped by lease ID to compute overall rent and engineered price category.</li>
       </ul>
+      <details>
+        <summary class="cursor-pointer text-indigo-600 hover:underline">Show Cleaning Code</summary>
+        <pre class="bg-gray-800 text-white p-4 rounded-lg overflow-x-auto mt-2"><code>
+# Merge datasets
+leases_full <- df_leases %>%
+  merge(df_unemp, by = c("year","quarter","state"), all.x=TRUE) %>%
+  merge(df_market, by = c("year","quarter","market"), all.x=TRUE)
+
+# Clean & feature engineer
+leases_clean <- leases_full %>%
+  group_by(lease_id) %>%
+  summarize(overall_rent = sum(rent_amount), .groups='drop') %>%
+  left_join(leases_full, by="lease_id") %>%
+  mutate(price_category = ifelse(predicted_rent > overall_rent, "Under", "Over"))
+        </code></pre>
+      </details>
     </section>
 
     <!-- Modeling -->
     <section id="modeling">
-      <h2 class="text-2xl font-semibold mb-2">Random Forest Modeling</h2>
-      <p class="text-gray-700 mb-4">A Random Forest model (1,000 trees) was trained to predict rental prices and price category. We:</p>
-      <ul class="list-disc list-inside text-gray-700 mb-4">
-        <li>Split data into training and testing sets (80/20 stratified by <code>price_category</code>).</li>
-        <li>Tuned hyperparameters (<code>mtry</code>, <code>min.node.size</code>) via grid search.</li>
-        <li>Achieved <strong>R<sup>2</sup> = 0.85</strong> and <strong>RMSE = \$45</strong> on holdout data.</li>
+      <h2 class="text-2xl font-semibold mb-2">Modeling &amp; Evaluation</h2>
+      <ul class="list-disc list-inside text-gray-700">
+        <li>Trained a Random Forest regressor with 1,000 trees.</li>
+        <li>Tuned <code>mtry</code> and <code>min_n</code> via grid search and 5-fold CV.</li>
+        <li>Final performance: R² = 0.85, RMSE = $45.</li>
       </ul>
-      <figure class="text-center">
-        <img src="assets/datafest_model_performance.png" alt="Model performance comparison" class="mx-auto rounded shadow">
-        <figcaption class="text-sm text-gray-600 mt-2">Figure 1. Model performance (R² and RMSE) across algorithms.</figcaption>
-      </figure>
+      <details>
+        <summary class="cursor-pointer text-indigo-600 hover:underline">Show Modeling Code</summary>
+        <pre class="bg-gray-800 text-white p-4 rounded-lg overflow-x-auto mt-2"><code>
+# Model spec & tuning
+rf_spec <- rand_forest(mode="regression", trees=1000, mtry=tune(), min_n=tune()) %>%
+  set_engine("ranger")
+
+market_recipe <- recipe(overall_rent ~ median_income + unemployment_rate + lease_duration_months + market_size,
+                         data=train_data) %>%
+  step_impute_median(all_numeric()) %>%
+  step_dummy(all_nominal()) %>%
+  step_normalize(all_numeric())
+
+wf <- workflow() %>%
+  add_recipe(market_recipe) %>%
+  add_model(rf_spec)
+
+rf_grid <- grid_regular(mtry(range=c(2,5)), min_n(range=c(5,20)), levels=4)
+
+set.seed(456)
+rf_tune <- tune_grid(wf, resamples=vfold_cv(train_data, v=5), grid=rf_grid, metrics=metric_set(rmse, rsq))
+
+best_params <- rf_tune %>% select_best("rmse")
+final_wf <- finalize_workflow(wf, best_params)
+final_fit <- final_wf %>% last_fit(split_data)
+        </code></pre>
+      </details>
     </section>
 
-    <!-- Variable Importance -->
-    <section id="vip">
-      <h2 class="text-2xl font-semibold mb-2">Variable Importance</h2>
-      <p class="text-gray-700 mb-4">Extracted from the ranger model, the top predictors impacting rental price were:</p>
-      <ul class="list-disc list-inside text-gray-700 mb-4">
-        <li><code>median_income</code></li>
-        <li><code>unemployment_rate</code></li>
-        <li><code>lease_duration_months</code></li>
-        <li><code>market_size</code></li>
-      </ul>
-      <figure class="text-center">
-        <img src="assets/datafest_vip_plot.png" alt="Variable importance plot" class="mx-auto rounded shadow">
-        <figcaption class="text-sm text-gray-600 mt-2">Figure 2. Top 10 variables by importance.</figcaption>
-      </figure>
-    </section>
-
-    <!-- ALE Plots -->
-    <section id="ale-plots">
-      <h2 class="text-2xl font-semibold mb-2">Accumulated Local Effects (ALE)</h2>
-      <p class="text-gray-700 mb-4">ALE plots reveal the marginal effect of each predictor on the response, highlighting nonlinear relationships.</p>
-      <figure class="text-center">
-        <img src="assets/datafest_ale_plot_income.png" alt="ALE plot for median income" class="mx-auto rounded shadow mb-4">
-        <figcaption class="text-sm text-gray-600 mt-2">Figure 3. ALE for Median Income.</figcaption>
-      </figure>
-      <figure class="text-center">
-        <img src="assets/datafest_ale_plot_unemp.png" alt="ALE plot for unemployment rate" class="mx-auto rounded shadow">
-        <figcaption class="text-sm text-gray-600 mt-2">Figure 4. ALE for Unemployment Rate.</figcaption>
-      </figure>
-    </section>
-
-    <!-- Results Table -->
-    <section id="results-table">
-      <h2 class="text-2xl font-semibold mb-2">Results Summary Table</h2>
-      <p class="text-gray-700 mb-4">Key summary metrics for the final model:</p>
-      <div class="overflow-x-auto mb-6">
-        <table class="min-w-full bg-white border border-gray-200 divide-y divide-gray-200">
-          <thead class="bg-gray-100">
-            <tr>
-              <th class="px-4 py-2 text-left text-gray-700">Metric</th>
-              <th class="px-4 py-2 text-left text-gray-700">Value</th>
-            </tr>
-          </thead>
-          <tbody class="divide-y divide-gray-200">
-            <tr><td class="px-4 py-2 text-gray-700">R²</td><td class="px-4 py-2 text-gray-700">0.85</td></tr>
-            <tr><td class="px-4 py-2 text-gray-700">RMSE</td><td class="px-4 py-2 text-gray-700">$45</td></tr>
-            <tr><td class="px-4 py-2 text-gray-700">MAE</td><td class="px-4 py-2 text-gray-700">$30</td></tr>
-          </tbody>
-        </table>
-      </div>
-    </section>
-
-    <!-- Temporal Analysis -->
-    <section id="temporal">
-      <h2 class="text-2xl font-semibold mb-2">Temporal Trends</h2>
-      <p class="text-gray-700 mb-4">Animated line chart showing average rental price by market over time:</p>
-      <figure class="text-center">
-        <img src="assets/datafest_line_animation.gif" alt="Animated line plot by year" class="mx-auto rounded shadow">
-        <figcaption class="text-sm text-gray-600 mt-2">Figure 5. Yearly trends in rental price across markets.</figcaption>
-      </figure>
-    </section>
-
-    <!-- Geographic Analysis -->
-    <section id="geospatial">
-      <h2 class="text-2xl font-semibold mb-2">Geospatial Patterns</h2>
-      <p class="text-gray-700 mb-4">Interactive map highlighting markets colored by price category:</p>
-      <figure class="text-center">
-        <img src="assets/datafest_map.png" alt="Map of price categories" class="mx-auto rounded shadow">
-        <figcaption class="text-sm text-gray-600 mt-2">Figure 6. Market-level price categorization.</figcaption>
-      </figure>
-    </section>
-
-    <!-- Comparative Analysis -->
-    <section id="comparison">
-      <h2 class="text-2xl font-semibold mb-2">Green vs. Red Markets</h2>
-      <p class="text-gray-700 mb-4">We contrasted high-demand (“Green”) and low-demand (“Red”) markets using key indicators:</p>
-      <figure class="text-center">
-        <img src="assets/datafest_green_red.png" alt="Green vs Red market comparison" class="mx-auto rounded shadow">
-        <figcaption class="text-sm text-gray-600 mt-2">Figure 7. Comparison of Green (high) vs. Red (low) markets.</figcaption>
-      </figure>
+    <!-- Interpretability -->
+    <section id="interpretability">
+      <h2 class="text-2xl font-semibold mb-2">Interpretability</h2>
+      <details>
+        <summary class="cursor-pointer text-indigo-600 hover:underline">Show VIP & ALE Code</summary>
+        <pre class="bg-gray-800 text-white p-4 rounded-lg overflow-x-auto mt-2"><code>
+# Variable importance and ALE
+vip(final_fit$.workflow[[1]] %>% extract_fit_parsnip())
+ale_income <- FeatureEffect$new(final_fit$.workflow[[1]] %>% extract_fit_parsnip(), feature="median_income", method="ale")
+ale_unemp  <- FeatureEffect$new(final_fit$.workflow[[1]] %>% extract_fit_parsnip(), feature="unemployment_rate", method="ale")
+        </code></pre>
+      </details>
     </section>
 
     <!-- Conclusion & Next Steps -->
     <section id="conclusion">
       <h2 class="text-2xl font-semibold mb-2">Conclusions &amp; Next Steps</h2>
-      <p class="text-gray-700 mb-4">Our analysis delivered robust rental price predictions, explained through ALE and VIP insights, and an engaging dashboard for stakeholders. To build on this work, we recommend:</p>
-      <ul class="list-disc list-inside text-gray-700">
-        <li>Extending models with external economic forecasts and competitor data.</li>
-        <li>Deploying the Random Forest model via a <a href="#" class="text-indigo-600 hover:underline">Plumber API</a> for real-time scoring.</li>
-        <li>Enhancing the Shiny dashboard with user-based scenario simulations.</li>
-        <li>Integrating customer feedback for continuous model retraining.</li>
-      </ul>
-      <p class="mt-6 text-center">
-        <a href="assets/datafest2025_report.pdf" download class="px-6 py-3 bg-indigo-600 text-white rounded hover:bg-indigo-700">Download Full Report (PDF)</a>
-        &nbsp;&nbsp;
-        <a href="assets/datafest2025_slides.pdf" download class="px-6 py-3 border border-indigo-600 text-indigo-600 rounded hover:bg-indigo-50">Download Slides (PDF)</a>
-      </p>
+      <p class="text-gray-700">To integrate images, GIFs, and other media:</p>
+      <ol class="list-decimal list-inside text-gray-700 mb-4">
+        <li>Place your media files (PNG, JPG, GIF) in the <code>assets/</code> directory of your project.</li>
+        <li>Reference them with a relative path in your HTML: <code>&lt;img src=&quot;assets/your_image.png&quot; alt=&quot;Description&quot;&gt;</code>.</li>
+        <li>For animated GIFs, use the same <code>&lt;img&gt;</code> tag; browsers will render the animation automatically.</li>
+        <li>Ensure you commit the <code>assets/</code> folder to GitHub so that your portfolio can display them live.</li>
+      </ol>
+      <p class="text-gray-700">Feel free to adjust widths or add <code>class="w-full md:w-3/4 mx-auto"</code> for responsive sizing.</p>
     </section>
 
   </main>
