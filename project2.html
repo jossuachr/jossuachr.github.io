@@ -150,13 +150,130 @@ ggplot(importance_df, aes(x = reorder(Variable, abs(Importance)), y = abs(Import
       <h2 class="text-2xl font-semibold mb-2">5. Accumulated Local Effects (ALE)</h2>
       <details class="mb-4">
         <summary class="cursor-pointer font-medium text-indigo-600">Show R code</summary>
-        <pre class="bg-gray-100 p-4 rounded overflow-x-auto"><code class="language-r">library(iml)
-predictor <- Predictor$new(rf_model, data=grouped_data, y=grouped_data$overall_rent)
-ale_avail <- FeatureEffect$new(predictor, feature='availability_proportion', method='ale')
-plot(ale_avail)
+        <pre class="bg-gray-100 p-4 rounded overflow-x-auto"><code class="language-r">generate_ale_plots <- function(model, data, target) {
+  library(iml)
+  library(ggplot2)
 
-ale_unemp <- FeatureEffect$new(predictor, feature='unemployment_rate', method='ale')
-plot(ale_unemp)
+  # Get the variable importance (VIP) from the random forest model
+  vip_values <- importance(model)
+  
+  # Sort by importance and get the top 5 features
+  top_5_features <- names(sort(vip_values[, 1], decreasing = TRUE))[6]
+  
+  # Remove any NA values from the list of top features
+  top_5_features <- na.omit(top_5_features)
+
+  
+  # Create the Predictor object
+  predictor <- Predictor$new(model, data = data, y = data[[target]])
+  
+  # Loop through the top features and plot their ALE
+  for (feature in top_5_features) {
+    if (feature %in% colnames(data)) {
+      ale <- FeatureEffect$new(predictor, feature = feature, method = "ale")
+      print(paste("Plotting ALE for feature:", feature))
+      
+      # Extract ALE data
+      ale_df <- ale$results
+      
+      # Rename columns for clarity
+      colnames(ale_df)[colnames(ale_df) == feature] <- "feature_value"
+      
+      # Create custom ALE plot without rug marks
+      ale_plot <- ggplot(ale_df, aes(x = feature_value, y = .value)) +
+        geom_line(color = "steelblue", size = 1.2) +
+        theme_minimal() +
+        labs(
+          title = "ALE Plot for Availability Proportion",
+             subtitle = "As Availability Proportion increases, the probability of overprice occuring increases",
+             x = "Availability Proportion",
+             y = "Accumulated Local Effect on Predicted Price",
+            caption = "DataFest 2025 Analysis"
+        ) +
+        theme_minimal(base_size = 12) +
+  theme(
+    plot.title = element_text(face = "bold", size = 16, hjust = 0.5),
+    plot.subtitle = element_text(size = 12, hjust = 0.5, color = "gray40"),
+    panel.grid.minor = element_blank(),
+    panel.border = element_rect(color = "gray90", fill = NA),
+    plot.caption = element_text(color = "gray50", face = "italic")
+  )
+      
+      # Display the plot
+      print(ale_plot)
+    } else {
+      print(paste("Feature", feature, "not found in the dataset. Skipping."))
+    }
+  }
+}
+
+
+generate_ale_plots(rf_model, grouped_data, target = "price_category")
+
+generate_ale_plots <- function(model, data, target) {
+  library(iml)
+  library(ggplot2)
+
+  # Get the variable importance (VIP) from the random forest model
+  vip_values <- importance(model)
+  print("VIP values:")
+  print(vip_values)
+  
+  # Sort by importance and get the top 5 features
+  top_5_features <- names(sort(vip_values[, 1], decreasing = TRUE))[3]
+  
+  # Remove any NA values from the list of top features
+  top_5_features <- na.omit(top_5_features)
+  print("Top features after removing NA values:")
+  print(top_5_features)
+  
+  # Create the Predictor object
+  predictor <- Predictor$new(model, data = data, y = data[[target]])
+  
+  # Loop through the top features and plot their ALE
+  for (feature in top_5_features) {
+    if (feature %in% colnames(data)) {
+      ale <- FeatureEffect$new(predictor, feature = feature, method = "ale")
+      print(paste("Plotting ALE for feature:", feature))
+      
+      # Extract ALE data
+      ale_df <- ale$results
+      
+      # Rename columns for clarity
+      colnames(ale_df)[colnames(ale_df) == feature] <- "feature_value"
+      
+      # Create custom ALE plot without rug marks
+      ale_plot <- ggplot(ale_df, aes(x = feature_value, y = .value)) +
+        geom_line(color = "steelblue", size = 1.2) +
+        theme_minimal() +
+        labs(
+          title = "ALE Plot for Rentable Building Area (RBA)",
+             subtitle = "As RBA increases, the probability of overprice occuring increases",
+             x = "RBA",
+             y = "Accumulated Local Effect on Predicted Price",
+            caption = "DataFest 2025 Analysis"
+        ) +
+      scale_x_continuous(labels = comma) +
+          theme_minimal(base_size = 12) +
+  theme(
+    plot.title = element_text(face = "bold", size = 16, hjust = 0.5),
+    plot.subtitle = element_text(size = 12, hjust = 0.5, color = "gray40"),
+    panel.grid.minor = element_blank(),
+    panel.border = element_rect(color = "gray90", fill = NA),
+    plot.caption = element_text(color = "gray50", face = "italic")
+  )
+      
+      # Display the plot
+      print(ale_plot)
+    } else {
+      print(paste("Feature", feature, "not found in the dataset. Skipping."))
+    }
+  }
+}
+
+
+generate_ale_plots(rf_model, grouped_data, target = "price_category")
+
 </code></pre>
       </details>
       <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
