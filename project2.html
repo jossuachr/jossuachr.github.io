@@ -26,7 +26,7 @@
     <!-- Header -->
     <header>
       <h1 class="text-4xl font-extrabold mb-2">DataFest Mizzou 2025 – Best in Show</h1>
-      <p class="text-gray-600">For DataFest, our RStudio Wizards team crafted a full data science pipeline—data cleaning, modeling, interpretability, and geospatial visualization—to analyze commercial lease pricing. As Lead Analyst, I authored each step in R and built the interactive dashboard that secured Best in Show.</p>
+      <p class="text-gray-600">For DataFest, our RStudio Wizards team crafted a full data science project, including data cleaning, modeling, interpretability, and geospatial visualization, in order to analyze commercial lease pricing.</p>
     </header>
 
     <!-- 1. Load Data & Libraries -->
@@ -50,7 +50,7 @@ library(leaflet)
 library(shiny)
 </code></pre>
       </details>
-      <p>We imported four datasets and loaded core libraries for data manipulation (<code>tidyverse</code>), modeling (<code>randomForest</code>, <code>ranger</code>), interpretability (<code>iml</code>), and mapping (<code>leaflet</code>).</p>
+      <p>We imported the four datasets given and loaded the needed libraries for data manipulation (<code>tidyverse</code>), modeling (<code>randomForest</code>, <code>ranger</code>), interpretability (<code>iml</code>), and mapping (<code>leaflet</code>).</p>
     </section>
 
     <!-- 2. Data Cleaning & Feature Engineering -->
@@ -88,7 +88,7 @@ grouped_data$space_type <- impute_mode(grouped_data$space_type)
 grouped_data <- impute_mean(grouped_data)
 </code></pre>
       </details>
-      <p>This stage merged all tables on common keys, collapsed duplicates by <code>lease_id</code>, and computed summary statistics like <strong>overall_rent</strong>. We then imputed numeric NAs with column means and categorical NAs with modal values to ensure a clean dataset for modeling.</p>
+      <p>This stage merged all tables on common keys, while getting rid of duplicates by <code>lease_id</code>, and computed summary statistics like <strong>overall_rent</strong>. We then imputed numeric NAs with column means and categorical NAs with modal values to ensure a clean dataset for modeling.</p>
     </section>
 
     <!-- 3. Random Forest Modeling -->
@@ -105,17 +105,44 @@ grouped_data$predicted_rent <- predict(rf_model, grouped_data)
 grouped_data$price_category <- ifelse(grouped_data$overall_rent > grouped_data$predicted_rent, 'Underpriced', 'Overpriced')
 </code></pre>
       </details>
-      <p>We fit a Random Forest regressor focusing on five key predictors. The model explained approximately 85% of rent variance, enabling us to flag leases whose actual rent deviated positively or negatively from predictions.</p>
+      <p>We fit a Random Forest model focusing on five key predictors. The model explained approximately 85% of rent variance, enabling us to flag leases whose actual rent deviated positively or negatively from the predictions.</p>
     </section>
 
     <!-- 4. Variable Importance -->
     <section id="vip">
       <h2 class="text-2xl font-semibold mb-2">4. Variable Importance</h2>
+      <details class="mb-4">
+        <summary class="cursor-pointer font-medium text-indigo-600">Show R code</summary>
+        <pre class="bg-gray-100 p-4 rounded overflow-x-auto"><code class="language-r">importance_data <- importance(rf_model)
+
+
+importance_df <- data.frame(Variable = rownames(importance_data), 
+                            Importance = importance_data[, 1])  
+
+importance_df <- importance_df %>% arrange(desc(Importance))
+
+ggplot(importance_df, aes(x = reorder(Variable, abs(Importance)), y = abs(Importance))) +
+  geom_bar(stat = "identity", fill = "darkgreen") + 
+  coord_flip() + 
+  labs(title = "Variable Importance for Predicting Overall Rent",
+       x = "",
+       y = "Importance",
+       caption = "DataFest 2025 Analysis") +
+  theme_minimal(base_size = 12) +
+  theme(
+    plot.title = element_text(face = "bold", size = 16, hjust = 0.5),
+    plot.subtitle = element_text(size = 12, hjust = 0.5, color = "gray40"),
+    panel.grid.minor = element_blank(),
+    panel.border = element_rect(color = "gray90", fill = NA),
+    plot.caption = element_text(color = "gray50", face = "italic")
+  )
+  </code></pre>
+      </details>
       <figure class="mb-6">
         <img src="assets/datafest vip.png" alt="Variable Importance for RF Model" class="rounded shadow-md">
-        <figcaption class="text-sm text-gray-600 mt-2">Figure 3. Variable Importance: median income, availability proportion, and RBA are top drivers.</figcaption>
+        <figcaption class="text-sm text-gray-600 mt-2">Figure 1. Variable Importance </figcaption>
       </figure>
-      <p>The importance ranking showed economic and space usage metrics consistently influenced rent predictions, validating domain expectations about market dynamics.</p>
+      <p>The importance ranking showed economic and space usage metrics consistently influenced rent predictions, validating domain expectations about market dynamics. We could see that the most important variables used to predict the leases whose actual rent deviated positively or negatifely from the predictions were the market in which they were present in, as well as the different years.</p>
     </section>
 
     <!-- 5. ALE Plots -->
