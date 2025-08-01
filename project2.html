@@ -279,14 +279,14 @@ generate_ale_plots(rf_model, grouped_data, target = "price_category")
       <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
         <figure>
           <img src="assets/ale av pro.png" alt="ALE Availability Proportion" class="rounded shadow-md">
-          <figcaption class="text-sm text-gray-600 mt-2">Figure 4. ALE: Higher availability proportion increases predicted rent nonlinearly.</figcaption>
+          <figcaption class="text-sm text-gray-600 mt-2">Figure 2. ALE for Availability Proportion</figcaption>
         </figure>
         <figure>
           <img src="assets/ale rba.png" alt="ALE Unemployment Rate" class="rounded shadow-md">
-          <figcaption class="text-sm text-gray-600 mt-2">Figure 5. ALE: Unemployment rate shows diminishing effect above ~7%.</figcaption>
+          <figcaption class="text-sm text-gray-600 mt-2">Figure 3. ALE for RBA</figcaption>
         </figure>
       </div>
-      <p>ALE plots reveal how each feature shifts predicted rent across its range, uncovering nonlinear thresholds vital for stakeholder interpretation.</p>
+      <p>ALE plots reveal how each feature shifts predicted rent across its range, uncovering nonlinear thresholds vital for stakeholder interpretation. Here, we can say that the higher our predictors are, the higher the probability of overpricing is.</p>
     </section>
 
     <!-- 6. Data Table -->
@@ -294,10 +294,10 @@ generate_ale_plots(rf_model, grouped_data, target = "price_category")
       <h2 class="text-2xl font-semibold mb-2">6. Sample Market Table</h2>
       <p>We created an interactive table of representative markets for 2024:</p>
       <figure class="mb-6">
-        <img src="assets/datafest_table.png" alt="Distinct Markets Table" class="rounded shadow-md">
-        <figcaption class="text-sm text-gray-600 mt-2">Figure 6. Top 10 distinct markets with rent vs. predicted and price category.</figcaption>
+        <img src="assets/datafest table.png" alt="Distinct Markets Table" class="rounded shadow-md">
+        <figcaption class="text-sm text-gray-600 mt-2">Figure 4. Top 10 distinct markets with rent vs. predicted and price category.</figcaption>
       </figure>
-      <p>This table allows quick comparison of actual versus predicted rents, highlighting top under- and over-valued markets.</p>
+      <p>This table allows quick comparison of actual versus predicted rents, highlighting top under-valued and over-valued markets.</p>
     </section>
 
     <!-- 7. Line Plot -->
