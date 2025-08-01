@@ -292,9 +292,35 @@ generate_ale_plots(rf_model, grouped_data, target = "price_category")
     <!-- 6. Data Table -->
     <section id="table">
       <h2 class="text-2xl font-semibold mb-2">6. Sample Market Table</h2>
-      <p>We created an interactive table of representative markets for 2024:</p>
+      <details class="mb-4">
+        <summary class="cursor-pointer font-medium text-indigo-600">Show R code</summary>
+        <pre class="bg-gray-100 p-4 rounded overflow-x-auto"><code class="language-r">library(DT)
+library(dplyr)
+
+grouped_data <- grouped_data %>%
+  mutate(across(where(is.numeric), ~round(., 2)))
+
+grouped_data <- grouped_data %>%
+  mutate(PriceCategory = ifelse(price_category == 1, "Overpriced", "Underpriced"))
+
+distinct_markets <- grouped_data %>%
+  group_by(market) %>%
+    filter(year == 2024) %>% 
+
+  slice_sample(n = 1) %>% 
+  ungroup() %>%
+  slice_head(n = 10)
+
+datatable(
+  distinct_markets[, c("market", "RBA", "year", "overall_rent", "predicted_rent", "PriceCategory")],
+  colnames = c("Market", "RBA", "Year", "Overall Rent", "Predicted Rent", "Price Category"),
+  options = list(pageLength = 10),
+  caption = "Table: 10 Unique Markets with Predicted Pricing and Varying Years"
+)
+</code></pre>
+      </details>
       <figure class="mb-6">
-        <img src="assets/datafest table.png" alt="Distinct Markets Table" class="rounded shadow-md">
+        <img src="assets/table.png" alt="Distinct Markets Table" class="rounded shadow-md">
         <figcaption class="text-sm text-gray-600 mt-2">Figure 4. Top 10 distinct markets with rent vs. predicted and price category.</figcaption>
       </figure>
       <p>This table allows quick comparison of actual versus predicted rents, highlighting top under-valued and over-valued markets.</p>
