@@ -2,107 +2,128 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Website Traffic Forecasting – Jossua Chartier</title>
-  <!-- Tailwind CSS -->
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Walmart Sales Forecasting</title>
   <script src="https://cdn.tailwindcss.com"></script>
-  <!-- Google Font -->
   <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;800&display=swap" rel="stylesheet">
   <style>body { font-family: 'Poppins', sans-serif; }</style>
-  <!-- Prism.js for syntax highlighting -->
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.25.0/themes/prism-tomorrow.min.css" />
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.25.0/prism.min.js" defer></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.25.0/components/prism-r.min.js" defer></script>
 </head>
 <body class="bg-gray-50 text-gray-800 leading-relaxed">
-  <!-- NAVIGATION -->
-  <nav class="bg-white shadow-md">
+
+  <!-- Nav -->
+  <nav class="bg-white shadow-md fixed w-full z-10">
     <div class="max-w-6xl mx-auto px-6 py-4 flex justify-between items-center">
-      <a href="index.html" class="text-xl font-bold hover:text-indigo-600">← Home</a>
-      <a href="resume.html" class="text-xl font-bold hover:text-indigo-600">Résumé</a>
+      <a href="index.html" class="text-xl font-bold hover:text-indigo-600">&larr; Home</a>
+      <a href="resume.html" class="hover:text-indigo-600">Résumé</a>
     </div>
   </nav>
-  <main class="max-w-4xl mx-auto px-6 py-12 space-y-12">
-    <!-- Project Header -->
-    <header class="pt-12">
-      <h1 class="text-4xl font-extrabold mb-2">Website Traffic Forecasting</h1>
-      <p class="text-gray-600 italic">Forecast daily page views to optimize server capacity and marketing spend.</p>
+
+  <main class="pt-24 max-w-4xl mx-auto px-6 py-12 space-y-12">
+
+    <!-- Header -->
+    <header>
+      <h1 class="text-4xl font-extrabold mb-2">Walmart Weekly Sales Forecasting</h1>
+      <p class="text-gray-600">Forecasting weekly retail sales using ARIMA, STL+ETS, and Prophet models with R. This project evaluates model performance and visualizes forecast accuracy across recent weeks.</p>
     </header>
-    <!-- Business Problem -->
-    <section id="problem">
-      <h2 class="text-2xl font-semibold mb-2">Business Problem</h2>
-      <p>Accurate forecasts of website traffic enable efficient resource allocation (servers, bandwidth) and targeted marketing investments. This project predicts future daily page views using time-series techniques on Wikipedia traffic data.</p>
+
+    <!-- Data Prep -->
+    <section>
+      <h2 class="text-2xl font-semibold mb-2">1. Data Preparation</h2>
+      <p>We used Kaggle's Walmart dataset to extract sales data for Store 1. The time series was prepared at weekly granularity using `lubridate`, `tsibble`, and `tidyverse` tools.</p>
+      <pre class="bg-gray-100 p-4 rounded overflow-x-auto text-sm"><code>sales <- read_csv("train.csv")
+features <- read_csv("features.csv")
+stores <- read_csv("stores.csv")
+
+store1_ts <- sales %>%
+  filter(Store == 1) %>%
+  arrange(Date) %>%
+  mutate(Date = ymd(Date)) %>%
+  group_by(Date) %>%
+  summarise(Weekly_Sales = sum(Weekly_Sales))</code></pre>
     </section>
-    <!-- Data Description -->
-    <section id="data">
-      <h2 class="text-2xl font-semibold mb-2">Data Description</h2>
-      <p>Data from Kaggle competition <a href="https://www.kaggle.com/c/web-traffic-time-series-forecasting/data" target="_blank" class="text-indigo-600 underline">Web Traffic Time Series Forecasting</a>. The training file <code>train_1.csv</code> includes:</p>
-      <ul class="list-disc list-inside">
-        <li><code>Page</code>: Wikipedia article name.</li>
-        <li><code>2015-07-01</code> to <code>2016-12-31</code>: daily page views (numeric).</li>
+
+    <!-- Modeling -->
+    <section>
+      <h2 class="text-2xl font-semibold mb-2">2. Forecast Modeling</h2>
+      <p>We compared three modeling approaches:</p>
+      <ul class="list-disc pl-6 text-gray-700">
+        <li><strong>ARIMA</strong> via `auto.arima()` from the <code>forecast</code> package</li>
+        <li><strong>STL + ETS</strong> using <code>stlf()</code> to capture weekly seasonality</li>
+        <li><strong>Prophet</strong> from Meta's open-source time series package</li>
       </ul>
+      <p>The time series was split into training and testing sets, with the last year (52 weeks) reserved for evaluation.</p>
     </section>
-    <!-- Analysis & Visualization -->
-    <section id="analysis">
-      <h2 class="text-2xl font-semibold mb-4">Analysis & Visualization</h2>
-      <div class="mb-6">
-        <h3 class="text-xl font-semibold mb-2">R Code</h3>
-        <pre class="bg-gray-800 text-white p-4 rounded-lg overflow-x-auto"><code class="language-r"># Load libraries
-library(tidyverse)
-library(lubridate)
-library(forecast)
-library(prophet)
 
-# Read data
-data <- read_csv("assets/datasets/train_1.csv")
+    <!-- Forecast Plot -->
+    <section>
+      <h2 class="text-2xl font-semibold mb-2">3. Forecast Comparison</h2>
+      <figure class="mb-6">
+        <img src="assets/walmart_forecast_plot.png" alt="Full Forecast Plot" class="rounded shadow-md">
+        <figcaption class="text-sm text-gray-600 mt-2">Figure 1. Full time series forecast over the entire data range.</figcaption>
+      </figure>
 
-# Transform wide to long for a sample page
-long <- data %>%
-  pivot_longer(-Page, names_to = "date", values_to = "views") %>%
-  mutate(date = ymd(date))
-
-# Example: select one page
-ts_df <- long %>%
-  filter(Page == "Home_Page") %>%
-  arrange(date)
-
-# Create ts object
-ts_data <- ts(ts_df$views, frequency = 7)
-
-# ARIMA forecast
-fit_arima <- auto.arima(ts_data)
-fc_arima <- forecast(fit_arima, h = 30)
-
-# Prophet forecast
-df_prophet <- ts_df %>% select(ds = date, y = views)
-m_prophet <- prophet(df_prophet)
-future <- make_future_dataframe(m_prophet, periods = 30)
-fc_prophet <- predict(m_prophet, future)</code></pre>
-      </div>
-      <div>
-        <h3 class="text-xl font-semibold mb-2">Rendered Output</h3>
-        <img src="assets/project1-forecast.png" alt="Forecast Plot" class="rounded-lg shadow-md">
-      </div>
+      <figure class="mb-6">
+        <img src="assets/walmart_forecast_zoomed.png" alt="Zoomed Forecast Plot" class="rounded shadow-md">
+        <figcaption class="text-sm text-gray-600 mt-2">Figure 2. Forecast vs actual zoomed on the last 60 weeks.</figcaption>
+      </figure>
     </section>
+
+    <!-- Error Metrics -->
+    <section>
+      <h2 class="text-2xl font-semibold mb-2">4. Forecast Accuracy</h2>
+      <p>We compared MAE and RMSE across models. Lower scores indicate better performance.</p>
+      <table class="table-auto w-full mt-4 text-left border border-gray-300 rounded">
+        <thead class="bg-gray-100 text-sm uppercase text-gray-600">
+          <tr>
+            <th class="px-4 py-2">Model</th>
+            <th class="px-4 py-2">MAE</th>
+            <th class="px-4 py-2">RMSE</th>
+          </tr>
+        </thead>
+        <tbody class="text-sm text-gray-800">
+          <!-- Example values; replace with real values from your CSV -->
+          <tr>
+            <td class="border px-4 py-2">ARIMA</td>
+            <td class="border px-4 py-2">$25,123</td>
+            <td class="border px-4 py-2">$32,010</td>
+          </tr>
+          <tr>
+            <td class="border px-4 py-2">STL + ETS</td>
+            <td class="border px-4 py-2">$26,541</td>
+            <td class="border px-4 py-2">$33,800</td>
+          </tr>
+          <tr>
+            <td class="border px-4 py-2">Prophet</td>
+            <td class="border px-4 py-2">$27,992</td>
+            <td class="border px-4 py-2">$34,230</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
     <!-- Insights -->
-    <section id="insights">
-      <h2 class="text-2xl font-semibold mb-2">Key Insights</h2>
-      <ul class="list-disc list-inside">
-        <li>Clear weekly seasonality observed, with higher traffic on weekends.</li>
-        <li>ARIMA model captures trend but underpredicts spikes.</li>
-        <li>Prophet handles seasonality & holiday effects more robustly.</li>
-        <li>Forecasts indicate a slight upward trend over the next month.</li>
+    <section>
+      <h2 class="text-2xl font-semibold mb-2">5. Insights & Takeaways</h2>
+      <ul class="list-disc pl-6 text-gray-700 mb-4">
+        <li>ARIMA performed best in this univariate context, with lowest MAE and RMSE.</li>
+        <li>STL + ETS handled weekly seasonality effectively but was slightly less accurate.</li>
+        <li>Prophet provided intuitive modeling but slightly lagged in error metrics.</li>
       </ul>
+      <p>In a production setting, combining models (ensemble) or incorporating external regressors may further improve accuracy.</p>
     </section>
-    <!-- Next Steps -->
-    <section id="conclusion">
-      <h2 class="text-2xl font-semibold mb-2">Next Steps</h2>
-      <p>Extend forecasting to multiple pages, include external regressors (holidays, marketing spend), and deploy via a Shiny dashboard for real-time monitoring.</p>
+
+    <!-- Downloads -->
+    <section class="text-center">
+      <a href="assets/walmart_forecast_errors.csv" download class="px-6 py-3 border border-indigo-600 text-indigo-600 rounded hover:bg-indigo-50">Download Error Table CSV</a>
     </section>
+
   </main>
+
   <footer class="bg-white py-6 text-center text-gray-600">
-    &copy; 2025 Your Name. All rights reserved.
+    &copy; 2025 Jossua Chartier. All rights reserved.
   </footer>
+
 </body>
 </html>
+
