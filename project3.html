@@ -31,6 +31,363 @@
     </header>
 
     <!-- Section: Dashboard Screenshots -->
+
+    <details class="mb-4">
+        <summary class="cursor-pointer font-medium text-indigo-600">Show R code</summary>
+        <pre class="bg-gray-100 p-4 rounded overflow-x-auto"><code class="language-r">library(shiny)
+library(bs4Dash)
+library(dplyr)
+library(ggplot2)
+library(DT)
+library(fresh)
+library(scales)
+library(lubridate)
+library(leaflet)
+library(viridis)
+library(stringr)
+
+airbnb <- read.csv("Airbnb_Open_Data.csv")
+saveRDS(airbnb, "airbnb.rds")
+data_raw <- readRDS("airbnb.rds")
+
+clean_money <- function(x) {
+  x <- as.character(x)
+  x[x == ""] <- NA
+  x <- str_replace_all(x, "\\$", "")
+  x <- str_replace_all(x, ",", "")
+  as.numeric(x)
+}
+
+# Work Copy 
+df <- data_raw %>%
+  rename_with(~ str_replace_all(., "\\.", "_")) %>%   # Replace dots by _
+  mutate(
+    price = clean_money(price),
+    service_fee = ifelse(!is.null(service_fee), clean_money(service_fee), NA_real_),
+    minimum_nights = suppressWarnings(as.numeric(minimum_nights)),
+    number_of_reviews = suppressWarnings(as.numeric(number_of_reviews)),
+    reviews_per_month = suppressWarnings(as.numeric(reviews_per_month)),
+    review_rate_number = suppressWarnings(as.numeric(review_rate_number)),
+    availability_365 = suppressWarnings(as.numeric(availability_365)),
+    lat = suppressWarnings(as.numeric(lat)),
+    long = suppressWarnings(as.numeric(long)),
+    last_review = as.Date(last_review, format = "%m/%d/%Y"), 
+    neighbourhood_group = ifelse(!is.null(neighbourhood_group), neighbourhood_group, neighbourhood.group),
+    room_type = ifelse(!is.null(room_type), room_type, room.type),
+    host_identity_verified = ifelse(is.null(host_identity_verified), NA, host_identity_verified)
+  )
+
+
+if ("neighbourhood.group" %in% colnames(data_raw) & !("neighbourhood_group" %in% colnames(df))) {
+  df$neighbourhood_group <- data_raw$neighbourhood.group
+}
+if ("room.type" %in% colnames(data_raw) & !("room_type" %in% colnames(df))) {
+  df$room_type <- data_raw$room.type
+}
+
+# Factor
+df <- df %>%
+  mutate(
+    neighbourhood_group = as.factor(ifelse(is.na(neighbourhood_group), "Unknown", neighbourhood_group)),
+    neighbourhood = as.factor(ifelse(is.null(neighbourhood), "", neighbourhood)),
+    room_type = as.factor(ifelse(is.na(room_type), "Unknown", room_type)),
+    cancellation_policy = ifelse(is.null(cancellation_policy), NA_character_, cancellation_policy),
+    host_identity_verified = ifelse(is.na(host_identity_verified) | host_identity_verified == "", "unconfirmed", host_identity_verified),
+    host_identity_verified = as.factor(host_identity_verified)
+  )
+
+df_plot <- df %>% filter(!is.na(lat) & !is.na(long) & !is.na(price))
+
+
+# Theme
+# ---------------
+theme_airbnb <- function(base_size = 13) {
+  theme_minimal(base_size = base_size) +
+    theme(
+      panel.grid.major = element_line(color = "grey90"),
+      panel.grid.minor = element_blank(),
+      plot.title = element_text(face = "bold", size = rel(1.1)),
+      plot.subtitle = element_text(size = rel(0.95)),
+      axis.title = element_text(size = rel(0.95)),
+      axis.text = element_text(size = rel(0.9)),
+      legend.position = "right",
+      legend.title = element_text(face = "bold")
+    )
+}
+
+
+# UI
+# ---------------
+ui <- dashboardPage(
+  freshTheme = NULL,
+  title = "Airbnb Listings Dashboard",
+  header = dashboardHeader(
+    title = dashboardBrand(title = "Airbnb Dashboard", color = "primary", href = "#")
+  ),
+  sidebar = dashboardSidebar(
+    skin = "light",
+    sidebarMenu(
+      menuItem("Dashboard", tabName = "dashboard", icon = icon("tachometer-alt")),
+      menuItem("Map", tabName = "map", icon = icon("map")),
+      menuItem("Data Table", tabName = "table", icon = icon("table")),
+      menuItem("About", tabName = "about", icon = icon("info-circle"))
+    ),
+    hr(),
+    # Filters
+    selectInput("filter_neigh", "Borough (neighbourhood.group)",
+                choices = c("All", sort(unique(as.character(df$neighbourhood_group)))), selected = "All"),
+    selectInput("filter_room", "Room Type", choices = c("All", sort(unique(as.character(df$room_type)))), selected = "All"),
+    checkboxInput("filter_verified", "Only host identity verified", value = FALSE),
+    sliderInput("filter_price", "Price ($) range", min = 0, max = ceiling(max(df$price, na.rm = TRUE) * 1.1),
+                value = c(0, min(1000, ceiling(max(df$price, na.rm = TRUE)))), step = 5, pre = "$"),
+    sliderInput("filter_avail", "Availability (days / year)", min = 0, max = 365, value = c(0, 365)),
+    sliderInput("filter_min_nights", "Minimum nights", min = 0, max = ifelse(is.na(max(df$minimum_nights, na.rm = TRUE)), 30, max(df$minimum_nights, na.rm = TRUE)), value = c(0, 14)),
+    actionButton("reset_filters", "Reset filters", icon = icon("redo"))
+  ),
+  body = dashboardBody(
+    tags$style(HTML(".project-screenshot{max-width:100%;height:auto;border-radius:6px;box-shadow:0 2px 8px rgba(0,0,0,0.12);}")),
+    tabItems(
+      tabItem(tabName = "dashboard",
+              fluidRow(
+                bs4ValueBoxOutput("box_total"),
+                bs4ValueBoxOutput("box_avg_price"),
+                bs4ValueBoxOutput("box_avg_rating")
+              ),
+              fluidRow(
+                box(
+                  title = "Price distribution",
+                  status = "primary",
+                  solidHeader = TRUE,
+                  collapsible = TRUE,
+                  width = 6,
+                  plotOutput("plot_price_hist", height = "300px")
+                ),
+                box(
+                  title = "Price by Room Type",
+                  status = "info",
+                  solidHeader = TRUE,
+                  collapsible = TRUE,
+                  width = 6,
+                  plotOutput("plot_price_box", height = "300px")
+                )
+              ),
+              fluidRow(
+                box(
+                  title = "Listings by Borough",
+                  status = "warning",
+                  solidHeader = TRUE,
+                  collapsible = TRUE,
+                  width = 6,
+                  plotOutput("plot_by_borough", height = "320px")
+                ),
+                box(
+                  title = "Reviews over time (last_review distribution)",
+                  status = "success",
+                  solidHeader = TRUE,
+                  collapsible = TRUE,
+                  width = 6,
+                  plotOutput("plot_reviews_time", height = "320px")
+                )
+              )
+      ),
+      tabItem(tabName = "map",
+              fluidRow(
+                box(
+                  title = "Listings Map",
+                  status = "primary",
+                  solidHeader = TRUE,
+                  width = 12,
+                  leafletOutput("listings_map", height = "700px")
+                )
+              )
+      ),
+      tabItem(tabName = "table",
+              fluidRow(
+                box(
+                  title = "Filtered data (downloadable)",
+                  status = "secondary",
+                  solidHeader = TRUE,
+                  width = 12,
+                  downloadButton("download_filtered", "Download CSV"),
+                  br(), br(),
+                  DTOutput("table_filtered")
+                )
+              )
+      ),
+      tabItem(tabName = "about",
+              fluidRow(
+                box(
+                  title = "About this dashboard",
+                  status = "gray-dark",
+                  solidHeader = TRUE,
+                  width = 8,
+                  "This dashboard is built with R, Shiny, bs4Dash, ggplot2 and leaflet. Data comes from an Airbnb listings dataset. Use the filters in the left sidebar to explore listings, prices, availability and reviews."
+                ),
+                box(
+                  title = "Notes",
+                  status = "info",
+                  solidHeader = TRUE,
+                  width = 4,
+                  tags$ul(
+                    tags$li("Price column cleaned to numeric (removed $ and commas)."),
+                    tags$li("Last review parsed as Date (format mm/dd/YYYY)."),
+                    tags$li("Map shows cluster markers and listing popups.")
+                  )
+                )
+              )
+      )
+    )
+  ),
+  footer = dashboardFooter(left = "Airbnb Dashboard • built with bs4Dash & ggplot2", right = "Portfolio project")
+)
+
+# ---------------
+# Server
+# ---------------
+server <- function(input, output, session) {
+  
+  observeEvent(input$reset_filters, {
+    updateSelectInput(session, "filter_neigh", selected = "All")
+    updateSelectInput(session, "filter_room", selected = "All")
+    updateCheckboxInput(session, "filter_verified", value = FALSE)
+    updateSliderInput(session, "filter_price", value = c(0, min(1000, ceiling(max(df$price, na.rm = TRUE)))))
+    updateSliderInput(session, "filter_avail", value = c(0, 365))
+    updateSliderInput(session, "filter_min_nights", value = c(0, 14))
+  })
+  
+  filtered_data <- reactive({
+    d <- df
+    if (!is.null(input$filter_neigh) && input$filter_neigh != "All") {
+      d <- d %>% filter(neighbourhood_group == input$filter_neigh)
+    }
+    if (!is.null(input$filter_room) && input$filter_room != "All") {
+      d <- d %>% filter(room_type == input$filter_room)
+    }
+    if (input$filter_verified) {
+      d <- d %>% filter(tolower(host_identity_verified) %in% c("verified", "true", "yes"))
+    }
+    d <- d %>%
+      filter(!is.na(price) & price >= input$filter_price[1] & price <= input$filter_price[2]) %>%
+      filter(!is.na(availability_365) & availability_365 >= input$filter_avail[1] & availability_365 <= input$filter_avail[2]) %>%
+      filter(!is.na(minimum_nights) & minimum_nights >= input$filter_min_nights[1] & minimum_nights <= input$filter_min_nights[2])
+    d
+  })
+  
+  output$box_total <- renderbs4ValueBox({
+    n <- nrow(filtered_data())
+    bs4ValueBox(value = formatC(n, format = "d", big.mark = ","), subtitle = "Filtered listings", icon = icon("list"), color = "primary")
+  })
+  
+  output$box_avg_price <- renderbs4ValueBox({
+    avgp <- round(mean(filtered_data()$price, na.rm = TRUE), 0)
+    bs4ValueBox(value = dollar(avgp), subtitle = "Average price (filtered)", icon = icon("dollar-sign"), color = "success")
+  })
+  
+  output$box_avg_rating <- renderbs4ValueBox({
+    avr <- round(mean(filtered_data()$review_rate_number, na.rm = TRUE), 2)
+    if (is.na(avr)) avr <- "N/A"
+    bs4ValueBox(value = avr, subtitle = "Avg review score", icon = icon("star"), color = "warning")
+  })
+  
+  # Histogram
+  output$plot_price_hist <- renderPlot({
+    d <- filtered_data()
+    ggplot(d, aes(x = price)) +
+      geom_histogram(bins = 60, fill = viridis(1, option = "D"), color = "white", alpha = 0.95) +
+      scale_x_continuous(labels = dollar_format(prefix = "$"), limits = c(0, quantile(d$price, probs = 0.98, na.rm = TRUE))) +
+      labs(title = "Price distribution (filtered)", x = "Price per night", y = "Number of listings") +
+      theme_airbnb()
+  })
+  
+  # Boxplot
+  output$plot_price_box <- renderPlot({
+    d <- filtered_data() %>% filter(!is.na(room_type))
+    ggplot(d, aes(x = room_type, y = price, fill = room_type)) +
+      geom_boxplot(alpha = 0.9, outlier.size = 0.8) +
+      scale_y_continuous(labels = dollar_format(prefix = "$"), limits = c(0, quantile(d$price, probs = 0.98, na.rm = TRUE))) +
+      labs(title = "Price by room type", x = "", y = "Price") +
+      theme_airbnb() +
+      theme(legend.position = "none", axis.text.x = element_text(angle = 20, hjust = 1))
+  })
+  
+  # Bar Chart
+  output$plot_by_borough <- renderPlot({
+    d <- filtered_data() %>%
+      group_by(neighbourhood_group) %>%
+      summarise(cnt = n(), avg_price = mean(price, na.rm = TRUE), .groups = "drop") %>%
+      arrange(desc(cnt))
+    ggplot(d, aes(x = reorder(neighbourhood_group, cnt), y = cnt, fill = avg_price)) +
+      geom_col() +
+      coord_flip() +
+      scale_fill_viridis_c(name = "Avg price", labels = dollar_format(prefix = "$")) +
+      labs(title = "Listings by borough", x = "", y = "Number of listings") +
+      theme_airbnb()
+  })
+  
+  # Reviews over time
+  output$plot_reviews_time <- renderPlot({
+    d <- filtered_data() %>% filter(!is.na(last_review))
+    if (nrow(d) == 0) {
+      ggplot() + geom_blank() + labs(title = "No review dates in filtered data") + theme_airbnb()
+    } else {
+      d2 <- d %>%
+        mutate(year = year(last_review)) %>%
+        group_by(year) %>%
+        summarise(total_reviews = sum(number_of_reviews, na.rm = TRUE), avg_reviews_per_listing = mean(reviews_per_month, na.rm = TRUE), .groups = "drop")
+      ggplot(d2, aes(x = year, y = total_reviews)) +
+        geom_line(size = 1.1) +
+        geom_point(size = 2) +
+        labs(title = "Total reviews by year (based on last_review)", x = "Year", y = "Total reviews") +
+        theme_airbnb()
+    }
+  })
+  
+  # Map
+  output$listings_map <- renderLeaflet({
+    d <- filtered_data() %>% filter(!is.na(lat) & !is.na(long))
+    leaflet(d) %>%
+      addProviderTiles(providers$CartoDB.Positron) %>%
+      addCircleMarkers(lng = ~long, lat = ~lat,
+                       radius = ~pmin(10, (price / median(price, na.rm = TRUE)) * 1.5),
+                       color = ~ifelse(room_type == "Entire home/apt", "#2b8cbe", ifelse(room_type == "Private room", "#6baed6", "#bdd7e7")),
+                       stroke = FALSE, fillOpacity = 0.7,
+                       clusterOptions = markerClusterOptions(),
+                       popup = ~paste0("<b>", NAME, "</b><br>",
+                                       "Price: ", ifelse(is.na(price), "NA", paste0("$", price)), "<br>",
+                                       "Room type: ", room_type, "<br>",
+                                       "Borough: ", neighbourhood_group, "<br>",
+                                       "Reviews: ", number_of_reviews, "<br>",
+                                       ifelse(!is.na(last_review), paste0("Last review: ", format(last_review, "%Y-%m-%d")), "")
+                       )
+      )
+  })
+  
+  # Data table + Download
+  output$table_filtered <- renderDT({
+    d <- filtered_data()
+    d_table <- d %>%
+      select(id, NAME, neighbourhood_group, neighbourhood, room_type, price, minimum_nights, number_of_reviews, reviews_per_month, availability_365, host_identity_verified) %>%
+      rename(Listing_ID = id, Title = NAME, Borough = neighbourhood_group, Neighbourhood = neighbourhood, Room_Type = room_type, Price = price,
+             Min_Nights = minimum_nights, Num_Reviews = number_of_reviews, Reviews_per_Month = reviews_per_month, Availability_365 = availability_365, Host_Verified = host_identity_verified)
+    datatable(d_table, options = list(pageLength = 10, scrollX = TRUE))
+  })
+  
+  output$download_filtered <- downloadHandler(
+    filename = function() {
+      paste0("Airbnb_filtered_", Sys.Date(), ".csv")
+    },
+    content = function(file) {
+      write.csv(filtered_data(), file, row.names = FALSE)
+    }
+  )
+  
+}
+
+
+shinyApp(ui, server)
+</code></pre>
+      </details>
+    
     <section id="screenshots">
       <h2 class="text-2xl font-semibold mb-4">Dashboard Overview</h2>
       <div class="space-y-12">
