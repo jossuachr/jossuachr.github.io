@@ -1,1 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Project 3 – Dashboard Overview</title>
+
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- Google Font -->
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;800&display=swap" rel="stylesheet">
+
+  <style>
+    body { font-family: 'Poppins', sans-serif; }
+  </style>
+</head>
+<body class="bg-gray-50 text-gray-800 leading-relaxed">
+
+  <!-- NAVIGATION -->
+  <nav class="bg-white shadow-md fixed w-full z-10">
+    <div class="max-w-6xl mx-auto px-6 py-4 flex justify-between items-center">
+      <a href="index.html" class="text-xl font-bold hover:text-indigo-600">&larr; Home</a>
+      <a href="resume.html" class="hover:text-indigo-600">Résumé</a>
+    </div>
+  </nav>
+
+  <main class="pt-24 max-w-6xl mx-auto px-6 py-12 space-y-12">
+
+    <!-- Header -->
+    <header>
+      <h1 class="text-4xl font-extrabold mb-2">Project 3 – Interactive Dashboard</h1>
+      <p class="text-gray-600">This project showcases a fully interactive dashboard designed to explore, visualize, and analyze key data metrics efficiently. Screenshots below illustrate the dashboard’s main features and functionality.</p>
+    </header>
+
+    <!-- 1. Overview -->
+    <section id="overview">
+      <h2 class="text-2xl font-semibold mb-2">1. Project Overview</h2>
+      <p>This dashboard was developed using <strong>R Shiny</strong> to provide a user-friendly interface for stakeholders to explore data, generate insights, and interact with visualizations. The dashboard supports:</p>
+      <ul class="list-disc pl-6 text-gray-700 mb-4">
+        <li>Dynamic filters for selecting regions, time periods, or categories</li>
+        <li>Interactive plots and summary statistics updating in real-time</li>
+        <li>Downloadable tables and charts for further analysis</li>
+        <li>Custom visualizations highlighting trends, outliers, and key metrics</li>
+      </ul>
+      <p>While the dashboard is interactive in the live version, this page presents screenshots with descriptive explanations for each main component.</p>
+    </section>
+
+    <!-- 2. Dashboard Layout -->
+    <section id="layout">
+      <h2 class="text-2xl font-semibold mb-2">2. Dashboard Layout</h2>
+      <p>The dashboard is structured into several panels for ease of navigation:</p>
+      <ul class="list-disc pl-6 text-gray-700 mb-4">
+        <li><strong>Sidebar Filters:</strong> Select metrics, date ranges, or categories to filter the dataset dynamically.</li>
+        <li><strong>Main Visualization Area:</strong> Displays key plots including line charts, bar charts, and scatterplots.</li>
+        <li><strong>Data Table:</strong> Summarizes underlying data with options to sort, filter, and download.</li>
+        <li><strong>Summary Metrics:</strong> Shows aggregated KPIs like averages, totals, and percentages.</li>
+      </ul>
+      <figure class="mb-6">
+        <img src="assets/dashboard_layout.png" alt="Dashboard Layout Screenshot" class="rounded shadow-md">
+        <figcaption class="text-sm text-gray-600 mt-2">Figure 1. Dashboard layout showing sidebar filters, plots, and summary metrics.</figcaption>
+      </figure>
+    </section>
+
+    <!-- 3. Key Visualizations -->
+    <section id="visualizations">
+      <h2 class="text-2xl font-semibold mb-2">3. Key Visualizations</h2>
+      
+      <p>The dashboard includes multiple interactive plots to reveal important patterns and trends:</p>
+
+      <!-- Line Chart -->
+      <figure class="mb-6">
+        <img src="assets/dashboard_linechart.png" alt="Dashboard Line Chart Screenshot" class="rounded shadow-md">
+        <figcaption class="text-sm text-gray-600 mt-2">Figure 2. Line chart illustrating temporal trends. Users can select a date range and dynamically update the chart.</figcaption>
+      </figure>
+
+      <!-- Bar Chart -->
+      <figure class="mb-6">
+        <img src="assets/dashboard_barchart.png" alt="Dashboard Bar Chart Screenshot" class="rounded shadow-md">
+        <figcaption class="text-sm text-gray-600 mt-2">Figure 3. Bar chart showing categorical comparisons. Interactive filters allow focus on specific categories or segments.</figcaption>
+      </figure>
+
+      <!-- Scatter Plot -->
+      <figure class="mb-6">
+        <img src="assets/dashboard_scatter.png" alt="Dashboard Scatter Plot Screenshot" class="rounded shadow-md">
+        <figcaption class="text-sm text-gray-600 mt-2">Figure 4. Scatter plot highlighting relationships and outliers. Hover tooltips provide detailed data for each point.</figcaption>
+      </figure>
+
+    </section>
+
+    <!-- 4. Data Table -->
+    <section id="datatable">
+      <h2 class="text-2xl font-semibold mb-2">4. Data Table</h2>
+      <p>The interactive table displays summarized or detailed data based on filters applied. Users can sort, search, and download the data for offline analysis.</p>
+      <figure class="mb-6">
+        <img src="assets/dashboard_table.png" alt="Dashboard Table Screenshot" class="rounded shadow-md">
+        <figcaption class="text-sm text-gray-600 mt-2">Figure 5. Interactive table with filtering, sorting, and download capabilities.</figcaption>
+      </figure>
+    </section>
+
+    <!-- 5. Insights & Interactivity -->
+    <section id="insights">
+      <h2 class="text-2xl font-semibold mb-2">5. Insights & Interactivity</h2>
+      <p>The dashboard facilitates exploration and decision-making by allowing users to:</p>
+      <ul class="list-disc pl-6 text-gray-700 mb-4">
+        <li>Compare metrics across multiple categories simultaneously</li>
+        <li>Identify trends, anomalies, and high-impact observations</li>
+        <li>Generate custom reports or snapshots of selected data</li>
+        <li>Adjust input filters to simulate scenarios or future outcomes</li>
+      </ul>
+      <figure class="mb-6">
+        <img src="assets/dashboard_filters.png" alt="Dashboard Filters Screenshot" class="rounded shadow-md">
+        <figcaption class="text-sm text-gray-600 mt-2">Figure 6. Sidebar filters enabling dynamic exploration of data.</figcaption>
+      </figure>
+    </section>
+
+    <!-- 6. Key Takeaways -->
+    <section id="takeaways">
+      <h2 class="text-2xl font-semibold mb-2">6. Key Takeaways</h2>
+      <ul class="list-disc pl-6 text-gray-700 mb-4">
+        <li>Interactive dashboards allow stakeholders to explore and interpret complex data efficiently.</li>
+        <li>Dynamic filtering and visualization tools help identify trends and anomalies quickly.</li>
+        <li>Summary metrics and data tables complement visualizations, providing detailed and actionable insights.</li>
+        <li>This dashboard can be extended with scenario analysis, forecasting, and real-time updates.</li>
+      </ul>
+    </section>
+
+    <!-- 7. Downloads -->
+    <section id="downloads" class="text-center">
+      <a href="assets/project3_report.pdf" download class="px-6 py-3 bg-indigo-600 text-white rounded hover:bg-indigo-700 mr-4">Download Report</a>
+      <a href="assets/project3_slides.pdf" download class="px-6 py-3 border border-indigo-600 text-indigo-600 rounded hover:bg-indigo-50">Slides</a>
+    </section>
+
+  </main>
+
+  <footer class="bg-white py-6 text-center text-gray-600">
+    &copy; 2025 Jossua Chartier. All rights reserved.
+  </footer>
+
+</body>
+</html>
 
