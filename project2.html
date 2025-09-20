@@ -329,6 +329,73 @@ datatable(
     <!-- 7. Line Plot -->
     <section id="lineplot">
       <h2 class="text-2xl font-semibold mb-2">7. Temporal Trends</h2>
+      <details class="mb-4">
+        <summary class="cursor-pointer font-medium text-indigo-600">Show R code</summary>
+        <pre class="bg-gray-100 p-4 rounded overflow-x-auto"><code class="language-r">yearly_rent <- Leases %>%
+  group_by(year, region) %>%
+  summarize(avg_rent = mean(overall_rent, na.rm = TRUE), .groups = 'drop')
+
+last_points <- yearly_rent %>%
+  filter(year == 2024) %>%
+  select(region, year, avg_rent)
+
+percent_changes <- last_points %>%
+  mutate(
+    label = case_when(
+      region == "Midwest/Central" ~ "+15.7%",
+      region == "Northeast" ~ "+13.3%",
+      region == "South" ~ "+25.4%",
+      region == "West" ~ "+15.1%"
+    )
+  )
+
+ggplot(yearly_rent, aes(x = year, y = avg_rent, color = region)) +
+  geom_smooth(se = FALSE, method = "loess", linewidth = 1.5, span = 0.6) +
+  geom_point(data = yearly_rent, aes(x = year, y = avg_rent), 
+             color = "black", size = 2, inherit.aes = FALSE) +
+  geom_label(
+    data = percent_changes %>% filter(region != "South"),
+    aes(x = year + 0.2, y = avg_rent, label = label, color = region),
+    hjust = 0, fontface = "bold", size = 5, show.legend = FALSE,
+    fill = NA, label.size = NA
+  ) +
+  geom_label(
+    data = percent_changes %>% filter(region == "South"),
+    aes(x = year + 0.2, y = avg_rent, label = label),
+    hjust = 0, fontface = "bold", size = 5, 
+    color = "green4", fill = "white", label.size = 0.5,
+    label.padding = unit(0.3, "lines")
+  ) +
+  scale_color_manual(values = c(
+    "Midwest/Central" = "red",
+    "Northeast" = "steelblue",
+    "South" = "green4",
+    "West" = "purple"
+  )) +
+  scale_x_continuous(breaks = 2018:2024, limits = c(2018, 2025)) +
+  labs(
+    title = "Regional Rent Trends with Percent Change",
+    subtitle = "2018–2024 cumulative growth by region - Southern rent is on the rise",
+    x = "Year",
+    y = "Average Rent",
+    color = "Region",
+    caption = "DataFest 2025 Analysis"
+  ) +
+  theme_minimal(base_size = 13) +
+  theme(
+    plot.title = element_text(face = "bold", size = 18, hjust = 0.5),
+    plot.subtitle = element_text(size = 13, hjust = 0.5, color = "gray40"),
+    legend.position = "bottom",
+    legend.title = element_text(face = "bold"),
+    legend.text = element_text(size = 11),
+    plot.caption = element_text(size = 9, color = "gray40", face = "italic", hjust = 1),
+    panel.grid.minor = element_blank(),
+    panel.border = element_blank(),
+    axis.title = element_text(size = 13),
+    plot.margin = ggplot2::margin(t = 10, r = 60, b = 20, l = 10)
+  )
+</code></pre>
+      </details>
       <figure class="mb-6">
         <img src="assets/trends.png" alt="Yearly Rent Trends" class="rounded shadow-md">
         <figcaption class="text-sm text-gray-600 mt-2">Figure 5. Smoothed year-over-year average rent by region with percent-change labels.</figcaption>
@@ -358,6 +425,80 @@ L.geoJson(marketGeoJson,{style:f=>({fillColor:colorScale(f.properties.residual)}
     <!-- 9. Animation -->
     <section id="animation">
       <h2 class="text-2xl font-semibold mb-2">9. Lease Valuation Animation</h2>
+      <details class="mb-4">
+        <summary class="cursor-pointer font-medium text-indigo-600">Show R code</summary>
+        <pre class="bg-gray-100 p-4 rounded overflow-x-auto"><code class="language-r">library(gifski)
+library(gganimate)
+
+
+market_year_avg <- grouped_data %>%
+  group_by(market, year) %>%
+  summarise(avg_overpriced = mean(overpriced, na.rm = TRUE), .groups = "drop") %>%
+  # Convert avg_overpriced to x-position (-1 to 1 scale)
+  mutate(x_position = case_when(
+    avg_overpriced == 0 ~ 0,  # Neutral
+    avg_overpriced < 0.5 ~ -1,  # Underpriced (less than half overpriced)
+    avg_overpriced >= 0.5 ~ 1,  # Overpriced (more than half overpriced)
+    TRUE ~ 0  # Default to neutral if no clear threshold
+  )) %>%
+
+    mutate(y_position = as.numeric(factor(market, levels = unique(market))) - 1)  # Fixed y for each market
+
+if (nrow(market_year_avg) == 0) stop("No data in market_year_avg. Check grouped_data.")
+
+grouped_data <- grouped_data %>%
+  mutate(year = as.numeric(year),  # Convert year to numeric
+         overpriced = ifelse(is.na(overpriced), 0, overpriced))  # Handle NA in overpriced
+
+if (nrow(market_year_avg) == 0) stop("No data after aggregation. Check grouped_data.")
+market_year_avg_updated <- market_year_avg %>%
+  mutate(x_position = ifelse(avg_overpriced >= 0.5, 1, -1))
+
+if (nrow(market_year_avg_updated) == 0) stop("No data after updating. Check market_year_avg.")
+
+p <- ggplot(market_year_avg_updated, aes(x = x_position, y = y_position, group = market)) +
+  geom_rect(aes(xmin = -1.5, xmax = 0, ymin = min(y_position) - 0.5, ymax = max(y_position) + 0.5), 
+            fill = "#4CBB17", alpha = 0.3) +
+  geom_rect(aes(xmin = 0, xmax = 1.5, ymin = min(y_position) - 0.5, ymax = max(y_position) + 0.5), 
+            fill = "#E34234", alpha = 0.3) +
+  geom_text(aes(label = market), vjust = 0.5, size = 5, color = "black", fontface = "bold") +
+  scale_x_continuous(
+    breaks = c(-1, 1),
+    labels = c("Underpriced", "Overpriced"),
+    limits = c(-1.5, 1.5),
+    position = "top"
+  ) +
+  scale_y_continuous(breaks = unique(market_year_avg_updated$y_position), 
+                    labels = NULL, 
+                    name = NULL) +
+  geom_label(data = market_year_avg_updated, aes(x = 0, y = max(y_position) + 2, label = paste("Year:", year)), 
+             fill = "white", color = "black", size = 6, label.size = 2, vjust = 0, hjust = 0.5, inherit.aes = FALSE) +
+  labs(
+    title = "Market Pricing Movement: {closest_state}",
+    x = NULL,
+    y = NULL
+  ) +
+  theme_minimal() +
+  theme(
+    plot.title = element_text(hjust = 0.5, size = 14, face = "bold"),
+    axis.text.y = element_blank(),
+    axis.ticks.y = element_blank(),
+    axis.title.y = element_blank(),
+    panel.grid = element_blank(),
+    axis.text.x.top = element_text(size = 14, face = "bold", vjust = 0),
+    legend.position = "none",
+    plot.margin = ggplot2::margin(t = 40, r = 10, b = 20, l = 10),
+    plot.caption = element_text(hjust = 1, size = 12, face = "italic")
+  ) +
+  transition_states(year, transition_length = 20, state_length = 30) +
+  ease_aes("linear")
+
+# anim <- animate(p, nframes = length(unique(market_year_avg_updated$year)) * 60, fps = 15, 
+#                 width = 800, height = 600, 
+#                 renderer = gifski_renderer(loop = TRUE))
+
+</code></pre>
+      </details>
       <figure class="mb-6">
         <img src="assets/test.gif" alt="Under/Over Valuation Animation" class="rounded shadow-md">
         <figcaption class="text-sm text-gray-600 mt-2">Figure 6. Animated progression of over- vs. under-valued leases over years.</figcaption>
