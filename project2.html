@@ -406,6 +406,143 @@ ggplot(yearly_rent, aes(x = year, y = avg_rent, color = region)) +
     <!-- 8. Interactive Map -->
     <section id="map-section">
       <h2 class="text-2xl font-semibold mb-2">8. Interactive Map Integration</h2>
+      <details class="mb-4">
+        <summary class="cursor-pointer font-medium text-indigo-600">Show R code</summary>
+        <pre class="bg-gray-100 p-4 rounded overflow-x-auto"><code class="language-r">market_to_city <- tribble(
+  ~market, ~city, ~state,
+  "Atlanta", "Atlanta", "GA",
+  "Austin", "Austin", "TX",
+  "Baltimore", "Baltimore", "MD",
+  "Boston", "Boston", "MA",
+  "Charlotte", "Charlotte", "NC",
+  "Chicago Suburbs", "Chicago", "IL", 
+  "Dallas/Ft Worth", "Dallas", "TX",  
+  "Detroit", "Detroit", "MI",
+  "Houston", "Houston", "TX",
+  "Los Angeles", "Los Angeles", "CA",
+  "Manhattan", "New York", "NY",      
+  "Nashville", "Nashville", "TN",
+  "Northern New Jersey", "Newark", "NJ",  
+  "Northern Virginia", "Arlington", "VA", 
+  "Philadelphia", "Philadelphia", "PA",
+  "Phoenix", "Phoenix", "AZ",
+  "Salt Lake City", "Salt Lake City", "UT",
+  "San Diego", "San Diego", "CA",
+  "San Francisco", "San Francisco", "CA",
+  "Seattle", "Seattle", "WA"
+)
+
+grouped_data$overpriced <- ifelse(grouped_data$overall_rent > grouped_data$predicted_rent, 1, 0)
+
+market_overpriced_avg <- grouped_data %>%
+  group_by(market) %>%
+  summarise(avg_overpriced = mean(overpriced, na.rm = TRUE), .groups = 'drop') %>%
+  filter(!is.na(avg_overpriced)) 
+
+market_locations <- market_overpriced_avg %>%
+  left_join(market_to_city, by = "market")
+
+manual_coords <- tribble(
+  ~city, ~lat, ~lon,
+  "Atlanta", 33.7490, -84.3880,
+  "Austin", 30.2672, -97.7431,
+  "Baltimore", 39.2904, -76.6122,
+  "Boston", 42.3601, -71.0589,
+  "Charlotte", 35.2271, -80.8431,
+  "Chicago", 41.8781, -87.6298,
+  "Dallas", 32.7767, -96.7970,
+  "Detroit", 42.3314, -83.0458,
+  "Houston", 29.7604, -95.3698,
+  "Los Angeles", 34.0522, -118.2437,
+"New York", 41.5, -74.0060,
+"Nashville", 36.1627, -86.7816,
+  "Newark", 40.7357, -74.1724,
+  "Arlington", 38.8796, -77.1068,
+  "Philadelphia", 39.9526, -75.1652,
+  "Phoenix", 33.4484, -112.0740,
+  "Salt Lake City", 40.7608, -111.8910,
+  "San Diego", 32.7157, -117.1611,
+  "San Francisco", 37.7749, -122.4194,
+  "Seattle", 47.6062, -122.3321
+)
+
+market_locations_final <- market_locations %>%
+  left_join(manual_coords, by = "city") %>%
+  filter(!is.na(lat) & !is.na(lon)) 
+
+
+library(leaflet)
+library(maps)
+library(htmlwidgets)
+
+pal <- colorNumeric(
+  palette = c("red", "yellow", "green"),
+  domain = c(0, 1),
+  reverse = TRUE
+)
+
+us_map <- leaflet(data = market_locations_final) %>%
+  addProviderTiles("CartoDB.Positron") %>%
+  setView(lng = -98.5795, lat = 39.8283, zoom = 4) %>%
+  addCircles(
+    lng = ~lon,
+    lat = ~lat,
+    weight = 1,
+    radius = 100000,
+    color = ~pal(avg_overpriced),
+    fillColor = ~pal(avg_overpriced),
+    fillOpacity = 0.7,
+    label = ~market
+  ) %>%
+  addLabelOnlyMarkers(
+    lng = ~lon,
+    lat = ~lat,
+    label = ~market,
+    labelOptions = labelOptions(
+      noHide = TRUE,
+      direction = "center",
+      textOnly = TRUE,
+      style = list("font-size" = "12px", "font-weight" = "bold", "color" = "black")
+    )
+  ) %>%
+  addLegend(
+    pal = pal,
+    values = c(0, 1),
+    title = "Underpriced to Overpriced: A Map of U.S",
+    position = "bottomright",
+    opacity = 0.8,
+    labFormat = function(type, cuts, p) {
+      n <- length(cuts)
+      cuts <- round(cuts, 2)
+      labels <- cuts
+      labels[1] <- paste(cuts[1], "Underpriced")
+      labels[n] <- paste(cuts[n], "Overpriced")
+      labels[2:(n-1)] <- cuts[2:(n-1)]
+      labels
+    }
+  ) %>%
+  htmlwidgets::onRender(
+    "function(el, x) {
+      var legend = document.querySelector('.legend');
+      if (legend) {
+        var labels = legend.getElementsByTagName('span');
+        for (var i = 0; i < labels.length; i++) {
+          labels[i].style.textAlign = 'center';
+          labels[i].style.paddingLeft = '5px';
+          labels[i].style.paddingRight = '5px';
+        }
+        legend.style.display = 'flex';
+        legend.style.flexDirection = 'column-reverse';
+        legend.style.alignItems = 'center';
+      }
+    }"
+  )
+
+us_map
+)
+</code></pre>
+      </details>
+      <figure class="mb-6">
       <p>Embed the Leaflet map for market residual visualization by:</p>
       <ol class="list-decimal pl-6 text-gray-700 mb-4">
         <li>Include in &lt;head&gt;: <code>&lt;link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" /&gt;</code></li>
